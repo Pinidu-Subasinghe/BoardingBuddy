@@ -6,7 +6,7 @@ function App() {
       <h1 className="text-3xl font-bold underline">
         Hello world!
       </h1>
-      <h2 className="text-2xl font-bold text-blue-500">
+      <h2 className="text-2xl text-blue-500">
         Tailwind CSS is working!
       </h2>
     </div>
