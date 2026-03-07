@@ -1,28 +1,30 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const connectDB = require('./config/db');
 
-// load env
 dotenv.config();
-
-// connect database
 connectDB();
 
 const app = express();
 
-// middleware
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
-// test route
-app.get("/", (req, res) => {
-  res.send("BoardingBuddy API running...");
-});
+// Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/boardings', require('./routes/boardingRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/inspector', require('./routes/inspectorRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
 
+// Review routes
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+
+// Notification routes
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
