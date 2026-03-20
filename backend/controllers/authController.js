@@ -1,13 +1,42 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+// Server-side validation mirrors frontend rules to prevent bypass.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+
 // Register
 const registerUser = async (req, res) => {
-  const { name, email, password, gender, contactNumber, role, university } =
-    req.body;
+  const {
+    name,
+    email,
+    password,
+    confirmPassword,
+    gender,
+    contactNumber,
+    role,
+    university,
+  } = req.body;
+
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!STRONG_PASSWORD_REGEX.test(password || "")) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
 
   try {
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
 
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
@@ -21,7 +50,7 @@ const registerUser = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       gender,
       contactNumber,
