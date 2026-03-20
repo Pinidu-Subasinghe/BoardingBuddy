@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 // Client-side submit validation rules for auth fields.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const MOBILE_REGEX = /^\d{10}$/;
 
 const AuthForm = () => {
   const { login, register, closeAuth } = useContext(AuthContext);
@@ -31,7 +32,15 @@ const AuthForm = () => {
   const universityOptions = Object.entries(universities);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'contactNumber') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, contactNumber: digitsOnly });
+      return;
+    }
+
+    setFormData({ ...formData, [name]: value });
   };
 
   const validateForm = () => {
@@ -42,6 +51,12 @@ const AuthForm = () => {
     }
 
     if (!isLogin) {
+      if (!formData.contactNumber) {
+        nextErrors.contactNumber = 'Mobile number is required';
+      } else if (!MOBILE_REGEX.test(formData.contactNumber)) {
+        nextErrors.contactNumber = 'Mobile number must be exactly 10 digits';
+      }
+
       if (!STRONG_PASSWORD_REGEX.test(formData.password)) {
         nextErrors.password =
           'Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)';
@@ -150,15 +165,25 @@ const AuthForm = () => {
                   <option value="female">Female</option>
                 </select>
 
-                <input
-                  type="text"
-                  name="contactNumber"
-                  placeholder="Phone"
-                  value={formData.contactNumber}
-                  onChange={handleChange}
-                  className="w-1/2 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  required
-                />
+                <div className="w-1/2">
+                  <input
+                    type="text"
+                    name="contactNumber"
+                    placeholder="Phone"
+                    value={formData.contactNumber}
+                    onChange={(e) => {
+                      handleChange(e);
+                      setErrors((prev) => ({ ...prev, contactNumber: '' }));
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.contactNumber ? 'border-red-500' : ''}`}
+                    inputMode="numeric"
+                    maxLength={10}
+                    required
+                  />
+                  {errors.contactNumber && (
+                    <p className="text-xs text-red-500 mt-1">{errors.contactNumber}</p>
+                  )}
+                </div>
               </div>
 
               <select

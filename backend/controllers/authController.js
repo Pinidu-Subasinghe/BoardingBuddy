@@ -4,6 +4,7 @@ const generateToken = require("../utils/generateToken");
 // Server-side validation mirrors frontend rules to prevent bypass.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const MOBILE_REGEX = /^\d{10}$/;
 
 // Register
 const registerUser = async (req, res) => {
@@ -18,7 +19,10 @@ const registerUser = async (req, res) => {
     university,
   } = req.body;
 
+  // Normalize user input before validation and persistence.
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedContactNumber =
+    typeof contactNumber === "string" ? contactNumber.replace(/\D/g, "") : "";
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
     return res.status(400).json({ message: "Please provide a valid email address" });
@@ -33,6 +37,10 @@ const registerUser = async (req, res) => {
 
   if (password !== confirmPassword) {
     return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  if (!MOBILE_REGEX.test(normalizedContactNumber)) {
+    return res.status(400).json({ message: "Mobile number must be exactly 10 digits" });
   }
 
   try {
@@ -53,7 +61,7 @@ const registerUser = async (req, res) => {
       email: normalizedEmail,
       password,
       gender,
-      contactNumber,
+      contactNumber: normalizedContactNumber,
       role,
       university,
     });

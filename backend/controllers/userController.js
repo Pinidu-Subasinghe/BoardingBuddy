@@ -2,6 +2,9 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const { addNotification } = require("../utils/notification");
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_REGEX = /^\d{10}$/;
+
 // Get profile
 const getUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
@@ -25,9 +28,24 @@ const updateUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
+    // Validate only fields that are being updated.
+    if (req.body.email !== undefined) {
+      const normalizedEmail = String(req.body.email).trim().toLowerCase();
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        return res.status(400).json({ message: "Please provide a valid email address" });
+      }
+      user.email = normalizedEmail;
+    }
+
+    if (req.body.contactNumber !== undefined) {
+      const normalizedContactNumber = String(req.body.contactNumber).replace(/\D/g, "");
+      if (!MOBILE_REGEX.test(normalizedContactNumber)) {
+        return res.status(400).json({ message: "Mobile number must be exactly 10 digits" });
+      }
+      user.contactNumber = normalizedContactNumber;
+    }
+
     user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
-    user.contactNumber = req.body.contactNumber || user.contactNumber;
 
     if (user.role === "student") {
       user.university = req.body.university || user.university;
