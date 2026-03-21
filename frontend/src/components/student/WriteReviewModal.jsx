@@ -7,8 +7,8 @@ const StarRating = ({ value, onChange, max = 5 }) => (
         key={i}
         type="button"
         className={
-          'text-2xl focus:outline-none ' +
-          (i < value ? 'text-yellow-400' : 'text-gray-300')
+          'text-3xl transition-all duration-200 active:scale-90 hover:scale-125 focus:outline-none ' +
+          (i < value ? 'text-amber-400 drop-shadow-sm' : 'text-zinc-300')
         }
         onClick={() => onChange(i + 1)}
         aria-label={`Rate ${i + 1} star${i === 0 ? '' : 's'}`}
@@ -19,7 +19,6 @@ const StarRating = ({ value, onChange, max = 5 }) => (
   </div>
 );
 
-
 const PREDEFINED_TAGS = [
   'Cleanliness',
   'Safety',
@@ -28,80 +27,148 @@ const PREDEFINED_TAGS = [
 ];
 
 const WriteReviewModal = ({ open, onClose, onSubmit, loading }) => {
+  const emptyRatings = PREDEFINED_TAGS.reduce((acc, tag) => ({ ...acc, [tag]: 0 }), {});
   const [ratings, setRatings] = useState(
-    PREDEFINED_TAGS.reduce((acc, tag) => ({ ...acc, [tag]: 0 }), {})
+    emptyRatings
   );
   const [comment, setComment] = useState('');
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+  const resetForm = () => {
+    setRatings(emptyRatings);
+    setComment('');
+    setErrors({});
+  };
+
+  const validateRatings = (nextRatings) => {
+    const unratedTags = PREDEFINED_TAGS.filter(tag => Number(nextRatings[tag]) <= 0);
+    return unratedTags.length > 0 ? 'Please rate all categories.' : '';
+  };
+
+  const validateComment = (value) => {
+    const trimmed = value.trim();
+    if (!trimmed) return 'Comment is required.';
+    if (trimmed.length > 150) return 'Comment must be 150 characters or fewer.';
+    return '';
+  };
 
   const handleRatingChange = (tag, value) => {
-    setRatings(r => ({ ...r, [tag]: value }));
+    setRatings(r => {
+      const nextRatings = { ...r, [tag]: value };
+      const ratingError = validateRatings(nextRatings);
+      setErrors(prev => ({ ...prev, ratings: ratingError }));
+      return nextRatings;
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-    // At least one tag must be rated
-    if (!Object.values(ratings).some(v => v > 0)) {
-      setError('Please rate at least one tag.');
-      return;
+    const nextErrors = {};
+    const unratedTags = PREDEFINED_TAGS.filter(tag => Number(ratings[tag]) <= 0);
+    if (unratedTags.length > 0) {
+      nextErrors.ratings = 'Please rate all categories.';
     }
+    const trimmedComment = comment.trim();
+    if (!trimmedComment) {
+      nextErrors.comment = 'Comment is required.';
+    } else if (trimmedComment.length > 150) {
+      nextErrors.comment = 'Comment must be 150 characters or fewer.';
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
     onSubmit({
       ratings: Object.entries(ratings)
         .filter(([_, score]) => score > 0)
         .map(([tag, score]) => ({ tag, score })),
-      comment
+      comment: trimmedComment
     });
   };
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md mx-auto">
         <button
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+          className="absolute top-5 right-5 text-zinc-400 hover:text-zinc-600 text-3xl leading-none transition-colors"
           onClick={onClose}
           aria-label="Close"
         >
           ×
         </button>
-        <h4 className="text-lg font-bold mb-4">Write a Review</h4>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block font-medium mb-2">Rate the following</label>
-            <div className="space-y-3">
+
+        <h4 className="text-xl font-semibold text-zinc-900 mb-6">Write a Review</h4>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block font-semibold text-zinc-700 mb-3 text-base">Rate the following</label>
+            <div className="space-y-4">
               {PREDEFINED_TAGS.map(tag => (
-                <div key={tag} className="flex items-center gap-3">
-                  <span className="w-40 text-gray-700 text-sm">{tag}</span>
-                  <StarRating value={ratings[tag]} onChange={v => handleRatingChange(tag, v)} />
+                <div key={tag} className="flex items-center justify-between gap-3">
+                  <span className="flex-1 text-zinc-700 text-sm font-medium leading-tight">
+                    {tag}
+                  </span>
+                  <div className="flex justify-end">
+                    <StarRating value={ratings[tag]} onChange={v => handleRatingChange(tag, v)} />
+                  </div>
                 </div>
               ))}
             </div>
+            {errors.ratings && (
+              <div className="mt-2 text-red-600 text-sm font-medium flex items-center gap-1">
+                {errors.ratings}
+              </div>
+            )}
           </div>
-          <div className="mb-4">
-            <label className="block font-medium mb-2">Comment (optional)</label>
+
+          <div>
+            <label className="block font-semibold text-zinc-700 mb-2 text-base">
+              Comment
+            </label>
             <textarea
-              className="border rounded px-3 py-2 w-full min-h-[60px]"
-              maxLength={500}
+              className="w-full border border-zinc-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-2xl px-4 py-3 text-sm min-h-[120px] resize-y transition-all"
+              maxLength={150}
               value={comment}
-              onChange={e => setComment(e.target.value)}
+              onChange={e => {
+                const nextValue = e.target.value;
+                setComment(nextValue);
+                const commentError = validateComment(nextValue);
+                setErrors(prev => ({ ...prev, comment: commentError }));
+              }}
               placeholder="Share your experience..."
             />
+            <div className="mt-1 flex justify-between text-xs">
+              <span className="text-zinc-400">{comment.length}/150</span>
+              {(comment.length >= 150 || errors.comment) && (
+                <span className="text-red-500 font-medium">
+                  {comment.length >= 150 ? 'Character limit reached' : errors.comment}
+                </span>
+              )}
+            </div>
           </div>
-          {error && <div className="mb-3 text-red-600 text-sm">{error}</div>}
-          <div className="flex justify-end gap-2">
+
+          <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              className="px-4 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-800"
-              onClick={onClose}
+              className="px-6 py-2.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 text-zinc-700 font-medium transition-all disabled:opacity-50"
+              onClick={() => {
+                resetForm();
+                onClose();
+              }}
               disabled={loading}
-            >Cancel</button>
+            >
+              Cancel
+            </button>
             <button
               type="submit"
-              className="px-4 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+              className="px-6 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.985] text-white font-semibold shadow-lg shadow-blue-500/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               disabled={loading}
-            >{loading ? 'Posting...' : 'Post Review'}</button>
+            >
+              {loading ? (
+                <>⟐ Posting…</>
+              ) : (
+                <>Post Review</>
+              )}
+            </button>
           </div>
         </form>
       </div>
