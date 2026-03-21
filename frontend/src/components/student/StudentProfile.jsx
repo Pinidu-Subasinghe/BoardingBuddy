@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { updateProfile, deleteProfile } from '../../api/api';
 import universities from '../../data/universities.json';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_REGEX = /^\d{10}$/;
+
 const StudentProfile = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -23,6 +26,7 @@ const StudentProfile = () => {
   });
 
   const [changed, setChanged] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const universityOptions = Object.entries(universities);
   const formatUniversityLabel = (code) => {
@@ -46,8 +50,10 @@ const StudentProfile = () => {
   };
 
   const onChange = (key, value) => {
+    const nextValue = key === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 10) : value;
+
     setFields(f => {
-      const next = { ...f, [key]: value };
+      const next = { ...f, [key]: nextValue };
       setChanged(
         next.name !== (user?.name || '') ||
         next.email !== (user?.email || '') ||
@@ -56,9 +62,35 @@ const StudentProfile = () => {
       );
       return next;
     });
+
+    if (key === 'email' || key === 'contactNumber') {
+      setErrors((prev) => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  const validateProfileFields = () => {
+    const nextErrors = {};
+
+    if (!EMAIL_REGEX.test(fields.email.trim())) {
+      nextErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!fields.contactNumber) {
+      nextErrors.contactNumber = 'Mobile number is required';
+    } else if (!MOBILE_REGEX.test(fields.contactNumber)) {
+      nextErrors.contactNumber = 'Mobile number must be exactly 10 digits';
+    }
+
+    return nextErrors;
   };
 
   const saveChanges = async () => {
+    const validationErrors = validateProfileFields();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     try {
       const res = await updateProfile(fields);
       const data = res.data;
@@ -142,6 +174,7 @@ const StudentProfile = () => {
                       </select>
                     ) : (
                       <input
+                        type={key === 'email' ? 'email' : 'text'}
                         ref={refs[key]}
                         readOnly={!editMode[key]}
                         value={
@@ -150,13 +183,17 @@ const StudentProfile = () => {
                             : fields[key]
                         }
                         onChange={(e) => onChange(key, e.target.value)}
+                        inputMode={key === 'contactNumber' ? 'numeric' : undefined}
+                        maxLength={key === 'contactNumber' ? 10 : undefined}
                         className={`
                           block w-full rounded-lg border-gray-300 
                           shadow-sm 
                           focus:border-indigo-500 focus:ring-indigo-500 
                           focus:ring-1 focus:ring-opacity-50
                           transition-all duration-200
-                          ${editMode[key] 
+                          ${errors[key]
+                            ? 'border-red-500 ring-1 ring-red-100'
+                            : editMode[key] 
                             ? 'bg-white border-indigo-400 ring-1 ring-indigo-200' 
                             : 'bg-gray-50/70 border-gray-200 text-gray-800 cursor-default'}
                           py-2.5 px-4 text-base
@@ -186,6 +223,9 @@ const StudentProfile = () => {
                       </button>
                     )}
                   </div>
+                  {errors[key] && (
+                    <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
+                  )}
                 </label>
               ))}
             </div>
