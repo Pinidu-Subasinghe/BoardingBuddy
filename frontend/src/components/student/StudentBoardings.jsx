@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getMyBookings } from '../../api/api';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatDateTime } from '../../utils/date';
 
 const ContactOwnerModal = ({ open, onClose, owner }) => {
   if (!open || !owner) return null;
@@ -34,6 +34,7 @@ const ContactOwnerModal = ({ open, onClose, owner }) => {
 
 const StudentBoardings = () => {
   const [boardings, setBoardings] = useState([]);
+  const [visitRequests, setVisitRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [contactModal, setContactModal] = useState({ open: false, owner: null });
 
@@ -42,10 +43,12 @@ const StudentBoardings = () => {
       try {
         const res = await getMyBookings();
         const items = res.data || [];
+        const visits = items.filter(b => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
         // only show confirmed stays
         const stays = items
           .filter(b => b.status === 'student_stayed' && b.boarding)
           .map(b => ({ ...b.boarding, stayStart: b.stayStart, stayEnd: b.stayEnd }));
+        setVisitRequests(visits);
         setBoardings(stays);
       } catch (err) {
         console.error('Error fetching boardings', err);
@@ -60,8 +63,51 @@ const StudentBoardings = () => {
 
   return (
     <div>
-      <h3 className="text-2xl font-bold mb-4">Current Stay</h3>
+      <h3 className="text-2xl font-bold mb-4">Visit Requests</h3>
       <ContactOwnerModal open={contactModal.open} onClose={() => setContactModal({ open: false, owner: null })} owner={contactModal.owner} />
+      {visitRequests.length === 0 ? (
+        <p className="text-gray-600">You have no visit requests.</p>
+      ) : (
+        <div className="space-y-4 mb-8">
+          {visitRequests.map((request) => (
+            <div key={request._id} className="bg-white p-5 rounded-lg shadow">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">{request.boarding?.title || 'Boarding'}</h4>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {request.boarding?.address} — {request.boarding?.city}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                    {request.status || 'requested'}
+                  </span>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Requested: {formatDateTime(request.requestedAt || request.createdAt)}
+                  </div>
+                </div>
+              </div>
+              {request.note && (
+                <p className="mt-3 text-sm text-gray-700">
+                  <span className="font-medium">Note:</span> {request.note}
+                </p>
+              )}
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <Link to={`/boardings/${request.boarding?._id}`} className="text-indigo-600 hover:underline text-sm font-medium whitespace-nowrap">
+                  View boarding details
+                </Link>
+                <div className="text-sm text-gray-700 whitespace-nowrap">
+                  <span className="font-medium">Owner:</span> {request.boarding?.owner?.name || 'N/A'}
+                  <span className="mx-2 text-gray-300">|</span>
+                  <span className="font-medium">Contact:</span> {request.boarding?.owner?.contactNumber || 'N/A'}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3 className="text-2xl font-bold mb-4">Current Stay</h3>
       {boardings.length === 0 ? (
         <p className="text-gray-600">You are not currently staying in any boarding.</p>
       ) : (
