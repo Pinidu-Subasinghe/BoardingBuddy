@@ -1,13 +1,50 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+// Server-side validation mirrors frontend rules to prevent bypass.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const MOBILE_REGEX = /^\d{10}$/;
+
 // Register
 const registerUser = async (req, res) => {
-  const { name, email, password, gender, contactNumber, role, university } =
-    req.body;
+  const {
+    name,
+    email,
+    password,
+    confirmPassword,
+    gender,
+    contactNumber,
+    role,
+    university,
+  } = req.body;
+
+  // Normalize user input before validation and persistence.
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedContactNumber =
+    typeof contactNumber === "string" ? contactNumber.replace(/\D/g, "") : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!STRONG_PASSWORD_REGEX.test(password || "")) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  if (!MOBILE_REGEX.test(normalizedContactNumber)) {
+    return res.status(400).json({ message: "Mobile number must be exactly 10 digits" });
+  }
 
   try {
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
 
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
@@ -21,10 +58,10 @@ const registerUser = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       gender,
-      contactNumber,
+      contactNumber: normalizedContactNumber,
       role,
       university,
     });
