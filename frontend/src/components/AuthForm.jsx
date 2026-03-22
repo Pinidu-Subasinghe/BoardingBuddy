@@ -283,12 +283,8 @@ const AuthForm = () => {
                   strokeWidth="2"
                   className="w-5 h-5"
                 >
-<<<<<<< HEAD
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
                   <circle cx="12" cy="12" r="3" />
-=======
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
->>>>>>> main
                 </svg>
               ) : (
                 <svg
@@ -299,12 +295,7 @@ const AuthForm = () => {
                   strokeWidth="2"
                   className="w-5 h-5"
                 >
-<<<<<<< HEAD
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
-=======
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
-                  <circle cx="12" cy="12" r="3" />
->>>>>>> main
                 </svg>
               )}
             </button>
