@@ -4,6 +4,7 @@ import { updateProfile } from '../../api/api';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
 
 // Always get latest user from localStorage after update
 function getCurrentUser() {
@@ -102,6 +103,9 @@ const OwnerProfile = () => {
   const [pw, setPw] = useState({ current: '', newPass: '', confirm: '' });
   const changePassword = async () => {
     if (!pw.current || !pw.newPass || !pw.confirm) return alert('Fill all password fields');
+    if (!STRONG_PASSWORD_REGEX.test(pw.newPass)) {
+      return alert('Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)');
+    }
     if (pw.newPass !== pw.confirm) return alert('New passwords do not match');
     try {
       const res = await updateProfile({ password: pw.newPass, currentPassword: pw.current });

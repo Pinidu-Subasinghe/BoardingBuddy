@@ -7,7 +7,8 @@ import Swal from 'sweetalert2';
 // Client-side submit validation rules for auth fields.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
-const MOBILE_REGEX = /^\d{10}$/;
+const MOBILE_REGEX = /^0\d{9}$/;
+const NAME_REGEX = /^[A-Za-z\s]+$/;
 
 const AuthForm = () => {
   const { login, register, closeAuth } = useContext(AuthContext);
@@ -35,8 +36,18 @@ const AuthForm = () => {
     const { name, value } = e.target;
 
     if (name === 'contactNumber') {
-      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      let digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length > 0 && digitsOnly[0] !== '0') {
+        digitsOnly = `0${digitsOnly}`;
+      }
+      digitsOnly = digitsOnly.slice(0, 10);
       setFormData({ ...formData, contactNumber: digitsOnly });
+      return;
+    }
+
+    if (name === 'name') {
+      const lettersOnly = value.replace(/[^A-Za-z\s]/g, '').slice(0, 30);
+      setFormData({ ...formData, name: lettersOnly });
       return;
     }
 
@@ -51,10 +62,16 @@ const AuthForm = () => {
     }
 
     if (!isLogin) {
+      if (!formData.name.trim()) {
+        nextErrors.name = 'Name is required';
+      } else if (!NAME_REGEX.test(formData.name.trim())) {
+        nextErrors.name = 'Name must contain only English letters';
+      }
+
       if (!formData.contactNumber) {
         nextErrors.contactNumber = 'Mobile number is required';
       } else if (!MOBILE_REGEX.test(formData.contactNumber)) {
-        nextErrors.contactNumber = 'Mobile number must be exactly 10 digits';
+        nextErrors.contactNumber = 'Mobile number must start with 0 and be 10 digits';
       }
 
       if (!STRONG_PASSWORD_REGEX.test(formData.password)) {
@@ -150,9 +167,13 @@ const AuthForm = () => {
                 placeholder="Full name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                maxLength={30}
+                className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.name ? 'border-red-500' : ''}`}
                 required
               />
+              {errors.name && (
+                <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+              )}
 
               <div className="flex gap-2">
                 <select
@@ -262,7 +283,8 @@ const AuthForm = () => {
                   strokeWidth="2"
                   className="w-5 h-5"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
                 </svg>
               ) : (
                 <svg
@@ -273,8 +295,7 @@ const AuthForm = () => {
                   strokeWidth="2"
                   className="w-5 h-5"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
-                  <circle cx="12" cy="12" r="3" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
                 </svg>
               )}
             </button>
@@ -314,7 +335,8 @@ const AuthForm = () => {
                       strokeWidth="2"
                       className="w-5 h-5"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                      <circle cx="12" cy="12" r="3" />
                     </svg>
                   ) : (
                     <svg
@@ -325,8 +347,7 @@ const AuthForm = () => {
                       strokeWidth="2"
                       className="w-5 h-5"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
-                      <circle cx="12" cy="12" r="3" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.59A2 2 0 0012 14a2 2 0 001.41-.59M9.88 5.09A10.94 10.94 0 0112 5c5 0 9 4 10 7a10.94 10.94 0 01-3.04 4.06M6.1 6.1A11.98 11.98 0 002 12c1 3 5 7 10 7 1.58 0 3.09-.4 4.42-1.1" />
                     </svg>
                   )}
                 </button>
