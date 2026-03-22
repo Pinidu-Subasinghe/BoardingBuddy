@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const Hero = () => (
   <section
-  className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 text-white overflow-hidden"
+  className="relative flex items-center justify-center bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 text-white overflow-hidden"
   style={{ minHeight: 'calc(100vh - 4rem)' }} // 4rem = navbar height
 >
   {/* Optional subtle background pattern / overlay */}
