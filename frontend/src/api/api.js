@@ -82,3 +82,6 @@ export const closeBooking = (id) => API.put(`/bookings/${id}/close`);
 // Ongoing stay actions
 export const extendStay = (id, newEndDate) => API.put(`/bookings/${id}/extend`, { newEndDate });
 export const endStay = (id) => API.put(`/bookings/${id}/end`);
+
+// Analytics APIs
+export const getOwnerAnalytics = () => API.get('/analytics/owner');
