@@ -57,6 +57,7 @@ export const addBoarding = (data) => API.post('/boardings', data);
 export const getBoardings = () => API.get('/boardings');
 export const getBoarding = (id) => API.get(`/boardings/${id}`);
 export const updateBoarding = (id, data) => API.put(`/boardings/${id}`, data);
+export const deleteBoarding = (id) => API.delete(`/boardings/${id}`);
 
 // Admin APIs
 export const assignInspector = (data) => API.put('/admin/assign-inspector', data);

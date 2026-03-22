@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings } from '../../api/api';
+import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding, deleteBoarding as apiDeleteBoarding } from '../../api/api';
 import OwnerBoardingCard from './OwnerBoardingCard';
 import OwnerAddBoarding from './OwnerAddBoarding';
+import OwnerUpdateBoarding from './OwnerUpdateBoarding';
 
 
 const OwnerBoardings = () => {
@@ -10,6 +11,7 @@ const OwnerBoardings = () => {
   const [boardings, setBoardings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingBoarding, setEditingBoarding] = useState(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -88,6 +90,28 @@ const OwnerBoardings = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this boarding?')) return;
+    try {
+      await apiDeleteBoarding(id);
+      setBoardings(prev => prev.filter(b => b._id !== id));
+    } catch (err) {
+      console.error('Error deleting boarding:', err);
+      alert(err.response?.data?.message || 'Error deleting boarding');
+    }
+  };
+
+  const handleUpdate = async (id, payload) => {
+    try {
+      const res = await apiUpdateBoarding(id, payload);
+      setBoardings(prev => prev.map(b => (b._id === id ? res.data : b)));
+      setEditingBoarding(null);
+    } catch (err) {
+      console.error('Error updating boarding:', err);
+      alert(err.response?.data?.message || 'Error updating boarding');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -158,6 +182,15 @@ const OwnerBoardings = () => {
           </div>
         )}
 
+        {/* Update Boarding Modal */}
+        {editingBoarding && (
+          <OwnerUpdateBoarding
+            boarding={editingBoarding}
+            onClose={() => setEditingBoarding(null)}
+            onSubmit={handleUpdate}
+          />
+        )}
+
         {/* Boardings List */}
         {boardings.length === 0 ? (
           <div className="
@@ -177,7 +210,12 @@ const OwnerBoardings = () => {
             gap-5 sm:gap-6 lg:gap-8
           ">
             {boardings.map((boarding) => (
-              <OwnerBoardingCard key={boarding._id} boarding={boarding} />
+              <OwnerBoardingCard
+                key={boarding._id}
+                boarding={boarding}
+                onEdit={() => setEditingBoarding(boarding)}
+                onDelete={() => handleDelete(boarding._id)}
+              />
             ))}
           </div>
         )}
