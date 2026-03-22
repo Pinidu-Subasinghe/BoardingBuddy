@@ -1,10 +1,24 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const { sendTransactionalEmail } = require("../utils/email");
 
 // Server-side validation mirrors frontend rules to prevent bypass.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
 const MOBILE_REGEX = /^\d{10}$/;
+
+const buildWelcomeEmail = (userName) => ({
+  subject: "Welcome to BoardingBuddy \ud83c\udfe0",
+  text:
+    `Dear ${userName},\n\n` +
+    "Welcome to BoardingBuddy!\n" +
+    "Your account has been successfully created.\n" +
+    "You can now explore boarding listings, manage your profile, and use our services.\n\n" +
+    "If you did not create this account, please contact support immediately.\n\n" +
+    "Thank you for choosing our platform.\n\n" +
+    "Thank You,\n" +
+    "BoardingBuddy \ud83c\udfe0 Team"
+});
 
 // Register
 const registerUser = async (req, res) => {
@@ -64,6 +78,15 @@ const registerUser = async (req, res) => {
       contactNumber: normalizedContactNumber,
       role,
       university,
+    });
+
+    const welcomeEmail = buildWelcomeEmail(user.name);
+    sendTransactionalEmail({
+      to: user.email,
+      subject: welcomeEmail.subject,
+      text: welcomeEmail.text
+    }).catch((error) => {
+      console.error("Email error:", error);
     });
 
     res.status(201).json({
