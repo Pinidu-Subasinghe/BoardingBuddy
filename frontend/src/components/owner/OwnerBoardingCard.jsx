@@ -1,6 +1,6 @@
 import React from 'react';
 
-const OwnerBoardingCard = ({ boarding }) => {
+const OwnerBoardingCard = ({ boarding, onEdit, onDelete }) => {
   // Determine status color class
   let statusCls = '';
   let statusText = boarding.status || 'Pending';
@@ -58,6 +58,20 @@ const OwnerBoardingCard = ({ boarding }) => {
             {statusText}
           </span>
         </p>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={() => onEdit && onEdit(boarding)}
+          className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg shadow-sm hover:shadow-md"
+        >
+          Edit
+        </button>
+        <button
+          onClick={() => onDelete && onDelete(boarding._id)}
+          className="px-3 py-1.5 bg-rose-600 text-white text-sm rounded-lg shadow-sm hover:shadow-md"
+        >
+          Delete
+        </button>
       </div>
     </div>
   );

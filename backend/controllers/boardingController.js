@@ -122,4 +122,23 @@ const getBoardingById = async (req, res) => {
   }
 };
 
-module.exports = { addBoarding, updateBoarding, getBoardings, getBoardingById };
+// Owner/Admin: Delete a boarding
+const deleteBoarding = async (req, res) => {
+  try {
+    const boarding = await Boarding.findById(req.params.id);
+    if (!boarding) return res.status(404).json({ message: 'Boarding not found' });
+
+    // Owners can delete their own boardings; admins can delete any
+    if (req.user.role === 'owner' && boarding.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Use deleteOne to avoid relying on document instance methods
+    await Boarding.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Boarding deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { addBoarding, updateBoarding, getBoardings, getBoardingById, deleteBoarding };
