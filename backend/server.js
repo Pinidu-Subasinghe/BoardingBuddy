@@ -18,6 +18,7 @@ app.use('/api/boardings', require('./routes/boardingRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/inspector', require('./routes/inspectorRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 // Review routes
 app.use('/api/reviews', require('./routes/reviewRoutes'));
