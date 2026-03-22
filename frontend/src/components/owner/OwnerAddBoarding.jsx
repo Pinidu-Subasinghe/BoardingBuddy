@@ -16,6 +16,7 @@ const LIFESTYLE_OPTIONS = [
 
 const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, handleSubmit }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const currentToken = useMemo(() => {
     const value = form.nearestUniversities || '';
@@ -42,9 +43,69 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
     setShowSuggestions(false);
   };
 
+  const validate = (values) => {
+    const e = {};
+    // Title
+    if (!values.title || !values.title.trim()) e.title = 'Title is required';
+    else if (values.title.length > 40) e.title = 'Title must be at most 40 characters';
+
+    // City (letters and spaces only)
+    if (!values.city || !values.city.trim()) e.city = 'City is required';
+    else if (!/^[A-Za-z\s]+$/.test(values.city)) e.city = 'City can contain only letters and spaces';
+
+    // Address
+    if (!values.address || !values.address.trim()) e.address = 'Address is required';
+    else if (values.address.length > 100) e.address = 'Address must be at most 100 characters';
+
+    // monthlyRent validation removed (handled via input sanitization)
+
+    // Total capacity
+    if (values.totalCapacity === '' || values.totalCapacity === null || values.totalCapacity === undefined) e.totalCapacity = 'Total capacity is required';
+    else if (!/^\d+$/.test(String(values.totalCapacity))) e.totalCapacity = 'Total capacity must be a positive integer';
+    else if (Number(values.totalCapacity) === 0) e.totalCapacity = 'Total capacity cannot be 0';
+
+    // Boarding type
+    if (!values.boardingType) e.boardingType = 'Boarding type is required';
+
+    // Nearest universities (at least 1)
+    const uniList = (values.nearestUniversities || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (uniList.length === 0) e.nearestUniversities = 'Add at least one nearest university';
+
+    // Lifestyle tags
+    if (!values.lifestyleTags || values.lifestyleTags.length === 0) e.lifestyleTags = 'Select at least one lifestyle/amenity';
+
+    // Description (optional) - limit and no special chars
+    if (values.description) {
+      if (values.description.length > 150) e.description = 'Description must be at most 150 characters';
+      else if (!/^[A-Za-z0-9\s.,'()-]*$/.test(values.description)) e.description = 'Description contains invalid characters';
+    }
+
+    return e;
+  };
+
+  const clearFieldError = (name, value) => {
+    const nextForm = { ...form, [name]: value };
+    const v = validate(nextForm);
+    setErrors(prev => {
+      const next = { ...prev };
+      if (!v[name]) delete next[name];
+      else next[name] = v[name];
+      return next;
+    });
+  };
+
+  const onSubmitLocal = (e) => {
+    e.preventDefault();
+    const validation = validate(form);
+    setErrors(validation);
+    if (Object.keys(validation).length === 0) {
+      handleSubmit(e);
+    }
+  };
+
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={onSubmitLocal}
       className="
         bg-white 
         rounded-2xl 
@@ -60,11 +121,18 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 lg:gap-7">
       {/* Title & City - side by side on md+ */}
       <div className="space-y-1">
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-medium text-gray-700">Title *</label>
+          <span className={`text-xs ${form.title.length >= 40 ? 'text-rose-600' : 'text-gray-500'}`}>{form.title.length}/40{form.title.length >= 40 ? ' — Title limit reached' : ''}</span>
+        </div>
         <input
           name="title"
           value={form.title}
-          onChange={handleChange}
-          required
+          onChange={(ev) => {
+            const value = ev.target.value.length <= 40 ? ev.target.value : ev.target.value.slice(0, 40);
+            handleChange({ target: { name: 'title', value } });
+            clearFieldError('title', value);
+          }}
           placeholder="Boarding Title *"
           className="
             w-full px-4 py-3.5 
@@ -75,14 +143,19 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             transition-all duration-200
           "
         />
+        {errors.title && <p className="text-rose-600 text-sm mt-1">{errors.title}</p>}
       </div>
 
       <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">City *</label>
         <input
           name="city"
           value={form.city}
-          onChange={handleChange}
-          required
+          onChange={(ev) => {
+            const filtered = ev.target.value.replace(/[^A-Za-z\s]/g, '');
+            handleChange({ target: { name: 'city', value: filtered } });
+            clearFieldError('city', filtered);
+          }}
           placeholder="City *"
           className="
             w-full px-4 py-3.5 
@@ -93,15 +166,25 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             transition-all duration-200
           "
         />
+        {errors.city && <p className="text-rose-600 text-sm mt-1">{errors.city}</p>}
       </div>
 
       {/* Full width fields */}
       <div className="sm:col-span-2 space-y-1">
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-medium text-gray-700">Address *</label>
+          <span className={`text-xs ${form.address.length >= 100 ? 'text-rose-600' : 'text-gray-500'}`}>{form.address.length}/100{form.address.length >= 100 ? ' — Address limit reached' : ''}</span>
+        </div>
         <input
           name="address"
           value={form.address}
-          onChange={handleChange}
-          required
+          onChange={(ev) => {
+            // allow letters, numbers, spaces and common punctuation (.,'()-/#)
+            const filtered = ev.target.value.replace(new RegExp("[^A-Za-z0-9\\s.,'()/#-]", 'g'), '');
+            const next = filtered.length <= 100 ? filtered : filtered.slice(0, 100);
+            handleChange({ target: { name: 'address', value: next } });
+            clearFieldError('address', next);
+          }}
           placeholder="Full Address *"
           className="
             w-full px-4 py-3.5 
@@ -112,14 +195,24 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             transition-all duration-200
           "
         />
+        {errors.address && <p className="text-rose-600 text-sm mt-1">{errors.address}</p>}
       </div>
 
       <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">Monthly Rent (LKR) *</label>
         <input
           name="monthlyRent"
           value={form.monthlyRent}
-          onChange={handleChange}
-          required
+          onChange={(ev) => {
+            let v = String(ev.target.value || '');
+            // keep digits only
+            v = v.replace(/\D+/g, '');
+            // strip leading zeros so value cannot start with 0
+            v = v.replace(/^0+/, '');
+            // limit to 5 digits (max 99999)
+            if (v.length > 5) v = v.slice(0, 5);
+            handleChange({ target: { name: 'monthlyRent', value: v } });
+          }}
           type="number"
           placeholder="Monthly Rent (LKR) *"
           className="
@@ -132,14 +225,15 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
           "
         />
+        
       </div>
 
       <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">Total Capacity *</label>
         <input
           name="totalCapacity"
           value={form.totalCapacity}
-          onChange={handleChange}
-          required
+          onChange={(ev) => { handleChange(ev); clearFieldError('totalCapacity', ev.target.value); }}
           type="number"
           placeholder="Total Capacity *"
           className="
@@ -152,13 +246,15 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
           "
         />
+        {errors.totalCapacity && <p className="text-rose-600 text-sm mt-1">{errors.totalCapacity}</p>}
       </div>
 
       <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">Boarding Type *</label>
         <select
           name="boardingType"
           value={form.boardingType}
-          onChange={handleChange}
+          onChange={(ev) => { handleChange(ev); clearFieldError('boardingType', ev.target.value); }}
           className="
             w-full px-4 py-3.5 
             bg-gray-50/70 hover:bg-gray-50 
@@ -172,15 +268,18 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
           <option value="boys">Boys only</option>
           <option value="girls">Girls only</option>
         </select>
+        {errors.boardingType && <p className="text-rose-600 text-sm mt-1">{errors.boardingType}</p>}
       </div>
 
       <div className="sm:col-span-2 space-y-1 relative">
+        <label className="text-sm font-medium text-gray-700">Nearest Universities *</label>
         <input
           name="nearestUniversities"
           value={form.nearestUniversities}
           onChange={(e) => {
             handleChange(e);
             setShowSuggestions(true);
+            clearFieldError('nearestUniversities', e.target.value);
           }}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -209,6 +308,7 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             ))}
           </div>
         )}
+        {errors.nearestUniversities && <p className="text-rose-600 text-sm mt-1">{errors.nearestUniversities}</p>}
       </div>
 
       {/* Lifestyle section */}
@@ -231,7 +331,12 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
               <input
                 type="checkbox"
                 checked={form.lifestyleTags.includes(tag)}
-                onChange={() => handleCheckboxChange(tag)}
+                onChange={() => {
+                  // toggle via provided handler
+                  handleCheckboxChange(tag);
+                  const next = form.lifestyleTags.includes(tag) ? form.lifestyleTags.filter(t => t !== tag) : [...form.lifestyleTags, tag];
+                  clearFieldError('lifestyleTags', next);
+                }}
                 className="
                   w-5 h-5 shrink-0
                   text-indigo-600 
@@ -245,14 +350,23 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             </label>
           ))}
         </div>
+        {errors.lifestyleTags && <p className="text-rose-600 text-sm mt-2">{errors.lifestyleTags}</p>}
       </div>
 
       {/* Description */}
       <div className="sm:col-span-2 space-y-1">
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-medium text-gray-700">Description (optional)</label>
+          <span className={`text-xs ${form.description.length >= 150 ? 'text-rose-600' : 'text-gray-500'}`}>{form.description.length}/150{form.description.length >= 150 ? ' — Description limit reached' : ''}</span>
+        </div>
         <textarea
           name="description"
           value={form.description}
-          onChange={handleChange}
+          onChange={(ev) => {
+            const value = ev.target.value.length <= 150 ? ev.target.value : ev.target.value.slice(0, 150);
+            handleChange({ target: { name: 'description', value } });
+            clearFieldError('description', value);
+          }}
           placeholder="Description (optional)"
           rows={5}
           className="
@@ -265,6 +379,7 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
             transition-all duration-200
           "
         />
+        {errors.description && <p className="text-rose-600 text-sm mt-1">{errors.description}</p>}
       </div>
     </div>
 
