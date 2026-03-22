@@ -66,18 +66,6 @@ const BrowseFilterPanel = ({
         </section>
 
         <section className="border border-gray-100 rounded-lg p-3 bg-gray-50">
-          <h4 className="text-sm font-semibold text-gray-800 mb-2">Capacity</h4>
-          <input
-            type="number"
-            min="0"
-            placeholder="Minimum available"
-            value={filters.capacityMin}
-            onChange={(e) => onChange("capacityMin", e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white"
-          />
-        </section>
-
-        <section className="border border-gray-100 rounded-lg p-3 bg-gray-50">
           <h4 className="text-sm font-semibold text-gray-800 mb-2">Inspector Rating</h4>
           <select
             value={filters.ratingMin}
