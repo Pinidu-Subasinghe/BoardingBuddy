@@ -46,28 +46,51 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
   };
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
+
+  const visibleSections = roleFilter === 'all'
+    ? sections
+    : sections.filter(section => section.role === roleFilter);
 
   return (
-    <div>
+    <div className="pt-4 sm:pt-6">
       <AdminAddUserModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={onCreate}
       />
 
-      {currentUser && (currentUser.role === 'admin' || currentUser.role === 'inspector') && (
-        <div className="mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {currentUser && (currentUser.role === 'admin' || currentUser.role === 'inspector') && (
           <button
             onClick={() => setModalOpen(true)}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow"
           >
             Create new user
           </button>
+        )}
+
+        <div className="sm:ml-auto">
+          <label htmlFor="admin-user-role-filter" className="block text-sm font-medium text-gray-700">
+            Filter users
+          </label>
+          <select
+            id="admin-user-role-filter"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="mt-1 px-3 py-2 border rounded-md text-sm bg-white"
+          >
+            <option value="all">All Users</option>
+            <option value="student">Students</option>
+            <option value="owner">Owners</option>
+            <option value="inspector">Inspectors</option>
+            <option value="admin">System Admins</option>
+          </select>
         </div>
-      )}
+      </div>
 
       <div className="space-y-8 sm:space-y-10 lg:space-y-12">
-        {sections.map(({ role, title, color }) => {
+        {visibleSections.map(({ role, title, color }) => {
           const roleUsers = groupedUsers[role];
           const styles = colorStyles[color];
 
