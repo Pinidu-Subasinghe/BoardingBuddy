@@ -3,14 +3,12 @@ import { getBoardings, getInspectorRatings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import BoardingCard from '../components/BoardingCard';
 import BrowseFilterPanel from '../components/BrowseFilterPanel';
-import BrowseChatbotModal from '../components/BrowseChatbotModal';
 import universities from '../data/universities.json';
 
 const Browse = () => {
   const [boardings, setBoardings] = useState([]);
   const [nearby, setNearby] = useState([]);
   const [other, setOther] = useState([]);
-  const [chatOpen, setChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [amenityOptions, setAmenityOptions] = useState([]);
   const [filters, setFilters] = useState({
@@ -175,7 +173,6 @@ const Browse = () => {
     []
   );
   const userUniversityLabel = userUniversity;
-  const visibleBoardings = useMemo(() => [...nearby, ...other], [nearby, other]);
 
   return (
     <div className="min-h-screen bg-gray-50/70 py-8 md:py-10 lg:py-12">
@@ -254,44 +251,6 @@ const Browse = () => {
           </div>
         </div>
       </div>
-
-      {!chatOpen && (
-        <div className="fixed right-20 sm:right-24 bottom-28 z-[70] rounded-full bg-gray-900 text-white text-xs font-medium px-3 py-1 shadow-lg">
-          Ask AI
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setChatOpen((prev) => !prev)}
-        className="fixed right-4 sm:right-6 bottom-24 z-[70] h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xl ring-4 ring-white flex items-center justify-center"
-        aria-label="Open chatbot"
-        title="Open BoardingBuddy Assistant"
-      >
-        {chatOpen ? (
-          <span className="text-2xl leading-none">×</span>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="h-7 w-7"
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5M6 18l-2 2V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6z" />
-          </svg>
-        )}
-      </button>
-
-      <BrowseChatbotModal
-        filters={appliedFilters}
-        boardings={visibleBoardings}
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        showTrigger={false}
-      />
     </div>
   );
 };

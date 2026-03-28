@@ -26,9 +26,6 @@ app.use('/api/reviews', require('./routes/reviewRoutes'));
 // Notification routes
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
-// Chatbot routes
-app.use('/api/chatbot', require('./routes/chatbotRoutes'));
-
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
