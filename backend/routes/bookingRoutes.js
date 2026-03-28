@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/authMiddleware');
-const { createBooking, getMyBookings, getOwnerBookings, markVisitCompleted, confirmStay, closeBooking } = require('../controllers/bookingController');
+const { createBooking, getMyBookings, getOwnerBookings, cancelVisitRequest, markVisitCompleted, confirmStay, closeBooking } = require('../controllers/bookingController');
 
 // Student creates a booking/visit request
 router.post('/', protect, authorize('student'), createBooking);
 
 // Student: get my bookings
 router.get('/my', protect, authorize('student'), getMyBookings);
+
+// Student: cancel visit request within 30 minutes (hard delete)
+router.put('/:id/cancel', protect, authorize('student'), cancelVisitRequest);
 
 // Owner: get bookings for owner
 router.get('/owner', protect, authorize('owner'), getOwnerBookings);
