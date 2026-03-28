@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']); // Force Node to use Google DNS
+
 const mongoose = require("mongoose");
 
 const connectDB = async () => {

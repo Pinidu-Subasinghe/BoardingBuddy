@@ -85,3 +85,6 @@ export const endStay = (id) => API.put(`/bookings/${id}/end`);
 
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');
+
+// Chatbot API
+export const askBrowseChatbot = (data) => API.post('/chatbot/ask', data);
