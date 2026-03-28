@@ -112,7 +112,7 @@ exports.updateReview = async (req, res) => {
         comment: normalizedComment,
         updatedAt: Date.now()
       },
-      { new: true }
+      {returnDocument: 'after'}
     );
 
     if (!review) return res.status(404).json({ message: 'Review not found or unauthorized' });
