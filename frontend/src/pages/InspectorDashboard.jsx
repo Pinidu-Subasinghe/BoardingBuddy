@@ -33,6 +33,7 @@ const InspectorDashboard = () => {
   const [remark, setRemark] = useState('');
   const [overallPercentage, setOverallPercentage] = useState(0);
   const [activeMenu, setActiveMenu] = useState('profile');
+  const [formErrors, setFormErrors] = useState({});
 
   useEffect(() => {
     const fetchBoardings = async () => {
@@ -99,6 +100,21 @@ const InspectorDashboard = () => {
     e.preventDefault();
     if (!active) return;
 
+    // Validation
+    const errors = {};
+    // All lifestyle tags must be rated (not 0)
+    (active.lifestyleTags || []).forEach((tag) => {
+      if (!ratings[tag] || ratings[tag] === 0) {
+        errors[tag] = 'Required';
+      }
+    });
+    // Safety badge must be selected
+    if (!safety) {
+      errors.safety = 'Safety badge is required';
+    }
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     const lifestyleRatings = Object.keys(ratings).map((tag) => ({ tag, stars: ratings[tag] }));
 
     try {
@@ -115,6 +131,7 @@ const InspectorDashboard = () => {
 
       alert('Boarding rated and marked as Completed');
       setActive(null);
+      setFormErrors({});
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error rating boarding');
@@ -226,10 +243,15 @@ const InspectorDashboard = () => {
                           className="flex items-center justify-between text-sm sm:text-base"
                         >
                           <span className="font-medium text-gray-700">{tag}</span>
-                          <StarPicker
-                            value={ratings[tag] || 0}
-                            onChange={(v) => updateStar(tag, v)}
-                          />
+                          <div className="flex flex-col items-end">
+                            <StarPicker
+                              value={ratings[tag] || 0}
+                              onChange={(v) => updateStar(tag, v)}
+                            />
+                            {formErrors[tag] && (
+                              <span className="text-xs text-red-500 mt-1 font-bold">Required</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -252,6 +274,9 @@ const InspectorDashboard = () => {
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
                     </select>
+                    {formErrors.safety && (
+                      <span className="text-xs text-red-500 mt-1">{formErrors.safety}</span>
+                    )}
                   </div>
 
                   <div>
