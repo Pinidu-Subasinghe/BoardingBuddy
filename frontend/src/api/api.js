@@ -12,6 +12,8 @@ export const deleteNotification = (id) => API.delete(`/notifications/${id}`);
 // Review APIs
 export const createReview = (data) => API.post('/reviews', data);
 export const getStudentReviews = () => API.get('/reviews/mine');
+export const updateReview = (reviewId, data) => API.put(`/reviews/${reviewId}`, data);
+export const deleteReview = (reviewId) => API.delete(`/reviews/${reviewId}`);
 // Get reviews for a specific boarding
 export const getReviewsForBoarding = (boardingId) => API.get(`/reviews/boarding/${boardingId}`);
 
