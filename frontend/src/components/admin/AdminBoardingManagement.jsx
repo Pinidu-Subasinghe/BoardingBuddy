@@ -95,7 +95,7 @@ const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
                     <option value="">Assign inspector...</option>
                     {inspectors.map(i => (
                       <option key={i._id} value={i._id}>
-                        {i.name} ({i.email})
+                        {i.name} 
                       </option>
                     ))}
                   </select>
