@@ -80,7 +80,7 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
             onChange={(e) => setRoleFilter(e.target.value)}
             className="mt-1 px-3 py-2 border rounded-md text-sm bg-white"
           >
-            <option value="all">All</option>
+            <option value="all">All Users</option>
             <option value="student">Students</option>
             <option value="owner">Owners</option>
             <option value="inspector">Inspectors</option>
