@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Boarding = require('../models/Boarding');
 
+const cleanRatings = (ratings = []) => ratings
+  .filter(r => r && typeof r.tag === 'string' && r.tag.trim() !== '')
+  .map(r => ({ tag: r.tag.trim(), score: Number(r.score) }))
+  .filter(r => Number.isFinite(r.score) && r.score >= 1 && r.score <= 5);
+
+const calculateOverallRating = (cleanedRatings = []) => {
+  const totalStars = cleanedRatings.reduce((acc, r) => acc + r.score, 0);
+  return Math.round(((totalStars / 20) * 100) * 10) / 10;
+};
+
 // Create a new review
 exports.createReview = async (req, res) => {
   try {
@@ -25,18 +35,14 @@ exports.createReview = async (req, res) => {
       return res.status(400).json({ message: 'At least one rating is required' });
     }
 
-    const cleanedRatings = ratings
-      .filter(r => r && typeof r.tag === 'string' && r.tag.trim() !== '')
-      .map(r => ({ tag: r.tag.trim(), score: Number(r.score) }))
-      .filter(r => Number.isFinite(r.score) && r.score >= 1 && r.score <= 5);
+    const cleanedRatings = cleanRatings(ratings);
 
     if (cleanedRatings.length === 0) {
       return res.status(400).json({ message: 'Ratings must include tag and score (1-5)' });
     }
 
     // Calculate overall rating: (sum of stars / 20) * 100
-    const totalStars = cleanedRatings.reduce((acc, r) => acc + r.score, 0);
-    const overallRating = Math.round(((totalStars / 20) * 100) * 10) / 10;
+    const overallRating = calculateOverallRating(cleanedRatings);
 
     const review = new Review({
       student: req.user._id,
@@ -81,11 +87,34 @@ exports.updateReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const { ratings, comment } = req.body;
+
+    if (!reviewId || !mongoose.Types.ObjectId.isValid(reviewId)) {
+      return res.status(400).json({ message: 'Invalid review id' });
+    }
+
+    if (!Array.isArray(ratings) || ratings.length === 0) {
+      return res.status(400).json({ message: 'At least one rating is required' });
+    }
+
+    const cleanedRatings = cleanRatings(ratings);
+    if (cleanedRatings.length === 0) {
+      return res.status(400).json({ message: 'Ratings must include tag and score (1-5)' });
+    }
+
+    const normalizedComment = typeof comment === 'string' ? comment.trim() : '';
+    const overallRating = calculateOverallRating(cleanedRatings);
+
     const review = await Review.findOneAndUpdate(
       { _id: reviewId, student: req.user._id },
-      { ratings, comment, updatedAt: Date.now() },
-      { new: true }
+      {
+        ratings: cleanedRatings,
+        overallRating,
+        comment: normalizedComment,
+        updatedAt: Date.now()
+      },
+      {returnDocument: 'after'}
     );
+
     if (!review) return res.status(404).json({ message: 'Review not found or unauthorized' });
     res.json(review);
   } catch (err) {
