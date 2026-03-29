@@ -1,9 +1,13 @@
-
-
-
-
 import React, { useEffect, useState } from 'react';
-import { getNotifications, createReview, getStudentReviews, deleteNotification } from '../../api/api';
+import {
+  getNotifications,
+  createReview,
+  getStudentReviews,
+  deleteNotification,
+  updateReview,
+  deleteReview
+} from '../../api/api';
+import { FaPen, FaTrashAlt } from 'react-icons/fa';
 import WriteReviewModal from './WriteReviewModal';
 import { formatDateTime } from '../../utils/date';
 
@@ -15,6 +19,7 @@ const StudentReviews = () => {
   const [showModal, setShowModal] = useState(false);
   const [currentBoardingId, setCurrentBoardingId] = useState(null);
   const [currentNotificationId, setCurrentNotificationId] = useState(null);
+  const [editingReview, setEditingReview] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [posting, setPosting] = useState(false);
 
@@ -45,22 +50,66 @@ const StudentReviews = () => {
         : boardingId;
     setCurrentBoardingId(typeof normalizedId === 'string' ? normalizedId.trim() : String(normalizedId));
     setCurrentNotificationId(notificationId || null);
+    setEditingReview(null);
     setShowModal(true);
   };
 
-  const handleSubmitReview = async (reviewData) => {
-    if (!currentBoardingId) return;
+  const handleEditReview = (review) => {
+    setEditingReview(review);
+    setCurrentBoardingId(null);
+    setCurrentNotificationId(null);
+    setShowModal(true);
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!reviewId || posting) return;
+    const shouldDelete = window.confirm('Delete this review? This action cannot be undone.');
+    if (!shouldDelete) return;
+
     setPosting(true);
     try {
-      await createReview({
-        boarding: String(currentBoardingId).trim(),
-        ...reviewData
-      });
-      setShowModal(false);
-      setCurrentBoardingId(null);
-      if (currentNotificationId) {
-        await deleteNotification(currentNotificationId);
+      await deleteReview(reviewId);
+      fetchReviews();
+    } catch (err) {
+      const detailed =
+        err?.message ||
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Failed to delete review';
+      alert(detailed);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setCurrentBoardingId(null);
+    setCurrentNotificationId(null);
+    setEditingReview(null);
+  };
+
+  const handleSubmitReview = async (reviewData) => {
+    setPosting(true);
+    try {
+      if (editingReview?._id) {
+        await updateReview(editingReview._id, reviewData);
+      } else {
+        if (!currentBoardingId) {
+          throw new Error('Boarding id is missing for review creation');
+        }
+
+        await createReview({
+          boarding: String(currentBoardingId).trim(),
+          ...reviewData
+        });
+
+        if (currentNotificationId) {
+          await deleteNotification(currentNotificationId);
+        }
       }
+
+      closeModal();
       fetchNotifications();
       fetchReviews();
     } catch (err) {
@@ -104,9 +153,12 @@ const StudentReviews = () => {
 
       <WriteReviewModal
         open={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeModal}
         onSubmit={handleSubmitReview}
         loading={posting}
+        mode={editingReview ? 'edit' : 'create'}
+        initialRatings={editingReview?.ratings || null}
+        initialComment={editingReview?.comment || ''}
       />
 
       {/* Student reviews list */}
@@ -138,6 +190,28 @@ const StudentReviews = () => {
                   <span className="ml-2 text-gray-700 text-base font-semibold">{r.overallRating?.toFixed(1) || '0.0'}%</span>
                 </span>
                 <span className="text-xs text-gray-500 mt-1">Overall</span>
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleEditReview(r)}
+                    disabled={posting}
+                    aria-label="Edit review"
+                    title="Edit review"
+                    className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center justify-center disabled:opacity-60"
+                  >
+                    <FaPen className="text-sm" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteReview(r._id)}
+                    disabled={posting}
+                    aria-label="Delete review"
+                    title="Delete review"
+                    className="w-9 h-9 rounded-full bg-red-100 text-red-700 hover:bg-red-200 flex items-center justify-center disabled:opacity-60"
+                  >
+                    <FaTrashAlt className="text-sm" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

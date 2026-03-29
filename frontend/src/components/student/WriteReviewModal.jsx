@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const StarRating = ({ value, onChange, max = 5 }) => (
   <div className="flex flex-row gap-1">
@@ -26,15 +26,46 @@ const PREDEFINED_TAGS = [
   'Owner Responsiveness'
 ];
 
-const WriteReviewModal = ({ open, onClose, onSubmit, loading }) => {
-  const emptyRatings = PREDEFINED_TAGS.reduce((acc, tag) => ({ ...acc, [tag]: 0 }), {});
-  const [ratings, setRatings] = useState(
-    emptyRatings
-  );
-  const [comment, setComment] = useState('');
+const createEmptyRatings = () => PREDEFINED_TAGS.reduce((acc, tag) => ({ ...acc, [tag]: 0 }), {});
+
+const getRatingsState = (sourceRatings) => {
+  const initialState = createEmptyRatings();
+  if (!Array.isArray(sourceRatings)) return initialState;
+
+  sourceRatings.forEach((item) => {
+    if (!item || typeof item.tag !== 'string') return;
+    const matchedTag = PREDEFINED_TAGS.find(tag => tag === item.tag.trim());
+    const score = Number(item.score);
+    if (matchedTag && Number.isFinite(score) && score >= 1 && score <= 5) {
+      initialState[matchedTag] = score;
+    }
+  });
+
+  return initialState;
+};
+
+const WriteReviewModal = ({
+  open,
+  onClose,
+  onSubmit,
+  loading,
+  mode = 'create',
+  initialRatings = null,
+  initialComment = ''
+}) => {
+  const [ratings, setRatings] = useState(getRatingsState(initialRatings));
+  const [comment, setComment] = useState(initialComment || '');
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (!open) return;
+    setRatings(getRatingsState(initialRatings));
+    setComment(initialComment || '');
+    setErrors({});
+  }, [open, initialRatings, initialComment]);
+
   const resetForm = () => {
-    setRatings(emptyRatings);
+    setRatings(createEmptyRatings());
     setComment('');
     setErrors({});
   };
@@ -96,7 +127,9 @@ const WriteReviewModal = ({ open, onClose, onSubmit, loading }) => {
           ×
         </button>
 
-        <h4 className="text-xl font-semibold text-zinc-900 mb-6">Write a Review</h4>
+        <h4 className="text-xl font-semibold text-zinc-900 mb-6">
+          {mode === 'edit' ? 'Edit Review' : 'Write a Review'}
+        </h4>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -164,9 +197,9 @@ const WriteReviewModal = ({ open, onClose, onSubmit, loading }) => {
               disabled={loading}
             >
               {loading ? (
-                <>⟐ Posting…</>
+                <>{mode === 'edit' ? 'Saving...' : 'Posting...'}</>
               ) : (
-                <>Post Review</>
+                <>{mode === 'edit' ? 'Save Changes' : 'Post Review'}</>
               )}
             </button>
           </div>

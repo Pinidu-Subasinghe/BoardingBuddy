@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const Boarding = require('../models/Boarding');
 const { addNotification } = require('../utils/notification');
+const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
 // Student: request visit -> create booking
 const createBooking = async (req, res) => {
@@ -68,6 +69,49 @@ const getOwnerBookings = async (req, res) => {
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Student: cancel visit request within 30 minutes of creation, then delete record
+const cancelVisitRequest = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (booking.student.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (!['requested', 'notified'].includes(booking.status)) {
+      return res.status(400).json({ message: 'Only active visit requests can be canceled' });
+    }
+
+    const requestedAt = booking.requestedAt || booking.createdAt;
+    const elapsed = Date.now() - new Date(requestedAt).getTime();
+    if (elapsed > CANCEL_WINDOW_MS) {
+      return res.status(400).json({ message: 'Cancellation window expired. Visit request can only be canceled within 30 minutes.' });
+    }
+
+    const ownerId = booking.owner;
+    const boardingId = booking.boarding;
+    const bookingId = booking._id;
+
+    await Booking.deleteOne({ _id: booking._id });
+
+    try {
+      addNotification({
+        userId: ownerId,
+        message: 'A student canceled a visit request within the allowed time window.',
+        type: 'visit_canceled',
+        data: { bookingId: bookingId.toString(), boardingId: boardingId.toString() }
+      });
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
+
+    return res.json({ message: 'Visit request canceled and removed.' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -240,4 +284,14 @@ const endStay = async (req, res) => {
   }
 };
 
-module.exports = { createBooking, getMyBookings, getOwnerBookings, markVisitCompleted, confirmStay, closeBooking, extendStay, endStay };
+module.exports = {
+  createBooking,
+  getMyBookings,
+  getOwnerBookings,
+  cancelVisitRequest,
+  markVisitCompleted,
+  confirmStay,
+  closeBooking,
+  extendStay,
+  endStay
+};
