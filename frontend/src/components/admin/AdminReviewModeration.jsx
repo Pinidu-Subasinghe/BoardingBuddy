@@ -10,21 +10,14 @@ const toStars = (overallRating) => {
   return Math.max(0, Math.min(5, Math.round((overallRating / 100) * 5)));
 };
 
-const getMessagePreview = (message, maxWords = 16) => {
+const getMessagePreview = (message, maxWords = 12) => {
   const normalized = (message || '').trim();
   if (!normalized) {
-    return { preview: 'No review message', truncated: false };
+    return 'No review message';
   }
 
   const words = normalized.split(/\s+/);
-  if (words.length <= maxWords) {
-    return { preview: normalized, truncated: false };
-  }
-
-  return {
-    preview: `${words.slice(0, maxWords).join(' ')} ...`,
-    truncated: true
-  };
+  return `${words.slice(0, maxWords).join(' ')}${words.length > maxWords ? ' ...' : ''}`;
 };
 
 const AdminReviewModeration = () => {
@@ -166,7 +159,7 @@ const AdminReviewModeration = () => {
                   const studentName = review?.student?.name || 'Unknown student';
                   const boardingName = review?.boarding?.title || 'Unknown boarding';
                   const message = review?.comment?.trim() || 'No review message';
-                  const { preview, truncated } = getMessagePreview(message);
+                  const preview = getMessagePreview(message);
 
                   return (
                     <tr key={review._id} className="hover:bg-gray-50/80 transition-colors">
@@ -185,18 +178,16 @@ const AdminReviewModeration = () => {
                         </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 max-w-sm">
-                        <p className="text-gray-700 leading-relaxed break-words" title={message}>
+                        <p className="max-w-[300px] truncate text-gray-700" title={preview}>
                           {preview}
                         </p>
-                        {truncated && (
-                          <button
-                            type="button"
-                            onClick={() => openMessageModal(review)}
-                            className="mt-2 inline-flex items-center rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:from-indigo-600 hover:to-sky-600 hover:shadow"
-                          >
-                            View full
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => openMessageModal(review)}
+                          className="mt-2 inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
+                        >
+                          View more
+                        </button>
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-gray-600 whitespace-nowrap">
                         {formatDateTime(review?.updatedAt || review?.createdAt)}
@@ -227,29 +218,29 @@ const AdminReviewModeration = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <button
             type="button"
-            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={closeMessageModal}
             aria-label="Close full review message"
           />
 
-          <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 px-5 py-4 text-white">
-              <p className="text-xs uppercase tracking-wider text-slate-300">Full Review Message</p>
-              <h4 className="mt-1 text-base font-semibold sm:text-lg">{messageModal.studentName}</h4>
-              <p className="text-xs text-slate-300 sm:text-sm">{messageModal.boardingName}</p>
+          <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="border-b border-gray-200 bg-gray-50 px-5 py-4">
+              <p className="text-xs uppercase tracking-wide text-indigo-600">Full Review Message</p>
+              <h4 className="mt-1 text-base font-semibold text-gray-900 sm:text-lg">{messageModal.studentName}</h4>
+              <p className="text-xs text-gray-600 sm:text-sm">{messageModal.boardingName}</p>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto px-5 py-5">
-              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700 sm:text-base">
+              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-700 sm:text-base">
                 {messageModal.message}
               </p>
             </div>
 
-            <div className="flex justify-end border-t border-slate-100 px-5 py-4">
+            <div className="flex justify-end border-t border-gray-200 bg-white px-5 py-4">
               <button
                 type="button"
                 onClick={closeMessageModal}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
               >
                 Close
               </button>
