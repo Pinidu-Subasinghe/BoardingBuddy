@@ -95,20 +95,20 @@ const OwnerOngoingStays = () => {
                         className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                         disabled={actionLoading === stay._id}
                         onClick={async () => {
-                          if (!window.confirm('Are you sure you want to end this stay?')) return;
+                          if (!window.confirm('Are you sure you want to close this stay?')) return;
                           setActionLoading(stay._id);
                           setError('');
                           try {
                             await endStay(stay._id);
                             await fetchOngoing();
                           } catch (err) {
-                            setError(err.message || 'Failed to end stay');
+                            setError(err.message || 'Failed to close stay');
                           } finally {
                             setActionLoading(null);
                           }
                         }}
                       >
-                        End
+                        Close Stay
                       </button>
                     </td>
                   </tr>

@@ -202,7 +202,7 @@ const OwnerVisits = () => {
                                 }}
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                               >
-                                Close
+                                Close Request
                               </button>
                             </>
                           )}
@@ -261,7 +261,7 @@ const OwnerVisits = () => {
                                 }}
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                               >
-                                Close
+                                Close Request
                               </button>
                             </>
                           )}

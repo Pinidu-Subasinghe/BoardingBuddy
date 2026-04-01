@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { cancelBooking, getMyBookings, getMyPayments } from '../../api/api';
+import { cancelBooking, closeBooking, getMyBookings, getMyPayments } from '../../api/api';
 import { formatDate, formatDateTime } from '../../utils/date';
 
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
@@ -43,6 +43,7 @@ const StudentBoardings = () => {
   const [loading, setLoading] = useState(true);
   const [cancelLoadingId, setCancelLoadingId] = useState(null);
   const [paidBookingIds, setPaidBookingIds] = useState(new Set());
+  const [closeRequestLoadingId, setCloseRequestLoadingId] = useState(null);
   const [contactModal, setContactModal] = useState({ open: false, owner: null });
   const [nowTs, setNowTs] = useState(Date.now());
 
@@ -68,7 +69,6 @@ const StudentBoardings = () => {
           .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
           .map((p) => (p?.booking?._id ? p.booking._id : p.booking))
       );
-
       setVisitRequests(visits);
       setBoardings(stays);
       setPaidBookingIds(paidIds);
@@ -130,6 +130,22 @@ const StudentBoardings = () => {
       window.alert(err?.message || 'Failed to cancel request');
     } finally {
       setCancelLoadingId(null);
+    }
+  };
+
+  const handleCloseVisitRequest = async (request) => {
+    const ok = window.confirm('Are you sure you want to close this request?');
+    if (!ok) return;
+
+    try {
+      setCloseRequestLoadingId(request._id);
+      await closeBooking(request._id);
+      setVisitRequests((prev) => prev.filter((r) => r._id !== request._id));
+      window.alert('Request closed successfully.');
+    } catch (err) {
+      window.alert(err?.message || 'Failed to close request');
+    } finally {
+      setCloseRequestLoadingId(null);
     }
   };
 
@@ -197,7 +213,7 @@ const StudentBoardings = () => {
                 </div>
               </div>
               {request.status === 'visit_completed' && (
-                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
                   {paidBookingIds.has(request._id) ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                       Payment completed. Waiting owner confirmation.
@@ -215,6 +231,15 @@ const StudentBoardings = () => {
                       Pay and Confirm Stay
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleCloseVisitRequest(request)}
+                    disabled={closeRequestLoadingId === request._id}
+                    className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+                  >
+                    {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
+                  </button>
                 </div>
               )}
             </div>
