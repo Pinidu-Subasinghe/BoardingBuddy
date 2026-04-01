@@ -167,8 +167,8 @@ const StudentReviews = () => {
       ) : (
         <div className="space-y-3 mt-6">
           {reviews.map(r => (
-            <div key={r._id} className="bg-white p-4 rounded shadow flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1">
+            <div key={r._id} className="bg-white p-4 rounded shadow flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1 min-w-0">
                 <h4 className="font-semibold mb-1">{r.boarding?.title || 'Boarding'}</h4>
                 <div className="flex flex-wrap gap-4 mb-2">
                   {r.ratings.map(rt => (
@@ -177,7 +177,11 @@ const StudentReviews = () => {
                     </span>
                   ))}
                 </div>
-                {r.comment && <p className="text-gray-700 text-sm">{r.comment}</p>}
+                {r.comment && (
+                  <p className="max-w-full whitespace-pre-wrap break-words text-gray-700 text-sm">
+                    {r.comment}
+                  </p>
+                )}
                 <div className="text-xs text-gray-400 mt-2">{formatDateTime(r.createdAt)}</div>
               </div>
               <div className="flex flex-col items-end min-w-[100px] mt-4 sm:mt-0">

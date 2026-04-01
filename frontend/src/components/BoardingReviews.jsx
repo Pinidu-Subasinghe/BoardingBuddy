@@ -118,7 +118,12 @@ const BoardingReviews = ({
 
             {review.comment &&
               (showFullDetails ? (
-                <div className="text-gray-700 text-sm">{review.comment}</div>
+                <div
+                  className="text-gray-700 text-sm whitespace-pre-wrap break-words"
+                  style={{ overflowWrap: "anywhere" }}
+                >
+                  {review.comment}
+                </div>
               ) : (
                 <div className="relative overflow-hidden whitespace-nowrap text-gray-700 text-sm">
                   <span>{truncateComment(review.comment)}</span>
