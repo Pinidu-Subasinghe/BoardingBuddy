@@ -265,6 +265,20 @@ const OwnerVisits = () => {
                               </button>
                             </>
                           )}
+
+                          {visit.status === 'closed' && (
+                            <>
+                              {visit.closedByRole === 'student' ? (
+                                <span className="px-3 py-1 rounded text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                                  Student Cancelled
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                  Closed by Owner
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

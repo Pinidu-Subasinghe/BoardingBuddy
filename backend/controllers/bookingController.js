@@ -221,6 +221,7 @@ const closeBooking = async (req, res) => {
     }
 
     booking.status = 'closed';
+    booking.closedByRole = isStudent ? 'student' : 'owner';
     await booking.save();
 
     try {

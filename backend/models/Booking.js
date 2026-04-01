@@ -10,6 +10,7 @@ const bookingSchema = new mongoose.Schema({
   stayStart: { type: Date },
   stayEnd: { type: Date },
   periodMonths: { type: Number },
+  closedByRole: { type: String, enum: ['owner', 'student'] },
   note: { type: String }
 }, { timestamps: true });
 
