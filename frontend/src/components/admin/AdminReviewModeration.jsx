@@ -182,6 +182,25 @@ const AdminReviewModeration = () => {
       });
 
       const worksheet = XLSX.utils.json_to_sheet(reportRows);
+      const columnKeys = Object.keys(reportRows[0] || {});
+      worksheet['!cols'] = columnKeys.map((key) => {
+        const maxValueLength = reportRows.reduce((maxLen, row) => {
+          const value = row[key];
+          const valueLength = value === null || value === undefined ? 0 : String(value).length;
+          return Math.max(maxLen, valueLength);
+        }, key.length);
+
+        if (key === 'Review Message' || key === 'Detailed Ratings') {
+          return { wch: Math.max(45, Math.min(90, maxValueLength + 4)) };
+        }
+
+        if (key.startsWith('Rating - ')) {
+          return { wch: Math.max(20, Math.min(28, maxValueLength + 2)) };
+        }
+
+        return { wch: Math.max(14, Math.min(36, maxValueLength + 2)) };
+      });
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Review Moderation');
 
