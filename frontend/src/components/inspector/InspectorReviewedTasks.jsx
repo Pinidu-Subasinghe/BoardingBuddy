@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Swal from 'sweetalert2';
+import { FiFileText } from 'react-icons/fi';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getInspectorRatings } from '../../api/api';
 import { formatDateTime } from '../../utils/date';
 
@@ -61,10 +65,157 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
     fetchRatingHistory();
   }, [reviewedTasks, user]);
 
+  const handleDownloadPdf = () => {
+    if (!reviewedTasks.length) {
+      Swal.fire({
+        title: 'No reviewed tasks to export',
+        icon: 'info',
+        draggable: true
+      });
+      return;
+    }
+
+    if (loadingRatings) {
+      Swal.fire({
+        title: 'Please wait',
+        text: 'Rating details are still loading.',
+        icon: 'info',
+        draggable: true
+      });
+      return;
+    }
+
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, pageWidth, 68, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(19);
+      doc.text('Inspector Reviewed Tasks Report', 40, 42);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Generated: ${formatDateTime(new Date())}`, pageWidth - 210, 28);
+      doc.text(`Inspector: ${user?.name || 'Inspector'}`, pageWidth - 210, 44);
+
+      const bodyRows = reviewedTasks.map((task, index) => {
+        const status = String(task?.status || '').toLowerCase();
+        const rating = ratingsByBoarding[String(task._id)];
+        const lifestyleDetails =
+          rating && (rating.lifestyleRatings || []).length > 0
+            ? rating.lifestyleRatings.map((item) => `${item.tag}: ${item.stars}/5`).join('\n')
+            : 'N/A';
+
+        const remark = rating?.remark?.trim() || '-';
+        const reviewedOn = rating?.createdAt ? formatDateTime(rating.createdAt) : '-';
+
+        return [
+          String(index + 1),
+          `${task.title || 'Boarding'}\n${task.address || ''} - ${task.city || ''}`,
+          `$${task.monthlyRent || 0}`,
+          `${task.totalCapacity || 0}`,
+          status === 'approved' ? 'Approved' : 'Rejected',
+          rating ? `${Math.round(rating.overallPercentage || 0)}%` : 'N/A',
+          rating?.safetyBadge || 'N/A',
+          lifestyleDetails,
+          remark,
+          reviewedOn
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 84,
+        head: [[
+          '#',
+          'Boarding Details',
+          'Rent',
+          'Capacity',
+          'Status',
+          'Overall',
+          'Safety',
+          'Lifestyle Ratings',
+          'Remark',
+          'Reviewed On'
+        ]],
+        body: bodyRows,
+        theme: 'grid',
+        styles: {
+          fontSize: 9.2,
+          cellPadding: 6,
+          textColor: [31, 41, 55],
+          valign: 'top',
+          overflow: 'linebreak'
+        },
+        bodyStyles: {
+          lineColor: [226, 232, 240],
+          lineWidth: 0.5
+        },
+        headStyles: {
+          fillColor: [238, 242, 255],
+          textColor: [55, 48, 163],
+          fontStyle: 'bold',
+          lineColor: [199, 210, 254],
+          lineWidth: 0.6
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 116 },
+          2: { cellWidth: 42 },
+          3: { cellWidth: 62 },
+          4: { cellWidth: 68 },
+          5: { cellWidth: 46 },
+          6: { cellWidth: 48 },
+          7: { cellWidth: 168 },
+          8: { cellWidth: 142 },
+          9: { cellWidth: 73 }
+        },
+        margin: { left: 24, right: 24, top: 84, bottom: 24 },
+      });
+
+      const today = new Date().toISOString().slice(0, 10);
+      doc.save(`inspector-reviewed-tasks-${today}.pdf`);
+
+      Swal.fire({
+        title: 'PDF downloaded',
+        icon: 'success',
+        timer: 1200,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      Swal.fire({
+        title: 'PDF generation failed',
+        text: error?.message || 'Could not generate reviewed tasks PDF',
+        icon: 'error',
+        draggable: true
+      });
+    }
+  };
+
   return (
     <div className="px-4 py-6 md:px-8">
-      <h2 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Reviewed Tasks</h2>
-      <p className="mb-6 text-sm text-gray-500">Task history after inspection completion</p>
+      <div className="mb-6 flex flex-col gap-3 pr-14 sm:pr-16 md:pr-20 lg:pr-24 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Reviewed Tasks</h2>
+          <p className="text-sm text-gray-500">Task history after inspection completion</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          disabled={loadingRatings || reviewedTasks.length === 0}
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FiFileText className="text-base" aria-hidden="true" />
+          Download PDF Report
+        </button>
+      </div>
 
       {reviewedTasks.length === 0 ? (
         <div className="rounded-xl bg-white p-8 text-center shadow-sm">
