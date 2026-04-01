@@ -1,5 +1,6 @@
 const Booking = require('../models/Booking');
 const Boarding = require('../models/Boarding');
+const Payment = require('../models/Payment');
 const { addNotification } = require('../utils/notification');
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
@@ -148,6 +149,14 @@ const confirmStay = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     if (booking.owner.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+    if (booking.status !== 'visit_completed') {
+      return res.status(400).json({ message: 'Stay can only be confirmed after visit completion' });
+    }
+
+    const payment = await Payment.findOne({ booking: booking._id, status: 'succeeded' });
+    if (!payment) {
+      return res.status(400).json({ message: 'Cannot confirm stay until first month payment is received' });
+    }
 
     const { startDate, periodMonths } = req.body;
     if (!startDate || !periodMonths) return res.status(400).json({ message: 'startDate and periodMonths required' });

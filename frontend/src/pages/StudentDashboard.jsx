@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import StudentProfile from '../components/student/StudentProfile';
 import StudentBoardings from '../components/student/StudentBoardings';
@@ -8,7 +9,14 @@ import DashboardShell from '../components/DashboardShell';
 
 const StudentDashboard = () => {
   const { user, logout } = useContext(AuthContext);
-  const [activeMenu, setActiveMenu] = useState('profile');
+  const location = useLocation();
+  const [activeMenu, setActiveMenu] = useState(location.state?.activeMenu || 'profile');
+
+  React.useEffect(() => {
+    if (location.state?.activeMenu) {
+      setActiveMenu(location.state.activeMenu);
+    }
+  }, [location.state]);
 
   // Prevent scrolling when access denied
   React.useEffect(() => {

@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { cancelBooking, getMyBookings } from '../../api/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { cancelBooking, getMyBookings, getMyPayments } from '../../api/api';
 import { formatDate, formatDateTime } from '../../utils/date';
 
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
 const ContactOwnerModal = ({ open, onClose, owner }) => {
   if (!open || !owner) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 sm:px-6">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-6">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Contact Owner</h3>
@@ -30,37 +31,62 @@ const ContactOwnerModal = ({ open, onClose, owner }) => {
           <button onClick={onClose} className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">Close</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
 const StudentBoardings = () => {
+  const navigate = useNavigate();
   const [boardings, setBoardings] = useState([]);
   const [visitRequests, setVisitRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelLoadingId, setCancelLoadingId] = useState(null);
+  const [paidBookingIds, setPaidBookingIds] = useState(new Set());
   const [contactModal, setContactModal] = useState({ open: false, owner: null });
   const [nowTs, setNowTs] = useState(Date.now());
 
+  const fetchBookingsAndPayments = async () => {
+    try {
+      const [bookingsRes, paymentsRes] = await Promise.all([getMyBookings(), getMyPayments()]);
+      const items = bookingsRes.data || [];
+      const payments = paymentsRes.data || [];
+      const visits = items.filter(b => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
+      // only show confirmed stays
+      const stays = items
+        .filter(b => b.status === 'student_stayed' && b.boarding)
+        .map(b => ({
+          ...b.boarding,
+          bookingId: b._id,
+          stayStart: b.stayStart,
+          stayEnd: b.stayEnd,
+          periodMonths: b.periodMonths
+        }));
+
+      const paidIds = new Set(
+        payments
+          .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
+          .map((p) => (p?.booking?._id ? p.booking._id : p.booking))
+      );
+
+      setVisitRequests(visits);
+      setBoardings(stays);
+      setPaidBookingIds(paidIds);
+    } catch (err) {
+      console.error('Error fetching boardings', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await getMyBookings();
-        const items = res.data || [];
-        const visits = items.filter(b => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
-        // only show confirmed stays
-        const stays = items
-          .filter(b => b.status === 'student_stayed' && b.boarding)
-          .map(b => ({ ...b.boarding, stayStart: b.stayStart, stayEnd: b.stayEnd }));
-        setVisitRequests(visits);
-        setBoardings(stays);
-      } catch (err) {
-        console.error('Error fetching boardings', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
+    fetchBookingsAndPayments();
+
+    const intervalId = setInterval(() => {
+      fetchBookingsAndPayments();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -170,6 +196,27 @@ const StudentBoardings = () => {
                   <span className="font-medium">Contact:</span> {request.boarding?.owner?.contactNumber || 'N/A'}
                 </div>
               </div>
+              {request.status === 'visit_completed' && (
+                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                  {paidBookingIds.has(request._id) ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Payment completed. Waiting owner confirmation.
+                    </span>
+                  ) : boardings.length > 0 ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                      You already have an active stay. Pay after leaving current boarding.
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/student-payment/${request._id}`)}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+                    >
+                      Pay and Confirm Stay
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

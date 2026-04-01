@@ -1,27 +1,42 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { getOwnerBookings, markVisitComplete, confirmStay, closeBooking } from '../../api/api';
+import { getOwnerBookings, markVisitComplete, confirmStay, closeBooking, getOwnerPayments } from '../../api/api';
 import Swal from 'sweetalert2';
 import { formatDateTime } from '../../utils/date';
 
 const OwnerVisits = () => {
   const { user } = useContext(AuthContext);
   const [visits, setVisits] = useState([]);
+  const [paidBookingIds, setPaidBookingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const fetchVisits = async () => {
+    try {
+      const [bookingsRes, paymentsRes] = await Promise.all([getOwnerBookings(), getOwnerPayments()]);
+      setVisits(bookingsRes.data || []);
+
+      const paidIds = new Set(
+        (paymentsRes.data || [])
+          .filter((p) => p?.status === 'succeeded' && p?.booking?._id)
+          .map((p) => p.booking._id)
+      );
+      setPaidBookingIds(paidIds);
+    } catch (err) {
+      console.error('Error fetching visits:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchVisits = async () => {
-      try {
-        const res = await getOwnerBookings();
-        setVisits(res.data || []);
-      } catch (err) {
-        console.error('Error fetching visits:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchVisits();
+
+    const intervalId = setInterval(() => {
+      fetchVisits();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, [user]);
 
   if (loading) {
@@ -42,7 +57,7 @@ const OwnerVisits = () => {
   const statusOptions = [
     { value: 'all', label: 'All' },
     { value: 'requested', label: 'Requested' },
-    { value: 'visit_completed', label: 'Visit Completed' },
+    { value: 'visit_completed', label: 'Visited / Payment' },
     { value: 'closed', label: 'Closed' },
     { value: 'left', label: 'Left' },
   ];
@@ -120,7 +135,11 @@ const OwnerVisits = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {filteredVisits.map((visit) => (
+                  {filteredVisits.map((visit) => {
+                    const isVisitCompleted = visit.status === 'visit_completed';
+                    const hasPayment = paidBookingIds.has(visit._id);
+
+                    return (
                     <tr 
                       key={visit._id} 
                       className="hover:bg-gray-50/70 transition-colors duration-150"
@@ -138,9 +157,21 @@ const OwnerVisits = () => {
                         {visit.boarding?.title || 'N/A'}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                          {visit.status || 'Pending'}
-                        </span>
+                        {isVisitCompleted ? (
+                          hasPayment ? (
+                            <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
+                              Payment Received
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-800 border border-yellow-300">
+                              Visited &amp; Pending Payment
+                            </span>
+                          )
+                        ) : (
+                          <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                            {visit.status || 'Pending'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex flex-wrap gap-2">
@@ -150,7 +181,7 @@ const OwnerVisits = () => {
                                 onClick={async () => {
                                   try {
                                     await markVisitComplete(visit._id);
-                                    setVisits(visits.map(v => v._id === visit._id ? { ...v, status: 'visit_completed' } : v));
+                                    setVisits((prev) => prev.map(v => v._id === visit._id ? { ...v, status: 'visit_completed' } : v));
                                     await Swal.fire({
                                       title: 'Marked as visit completed',
                                       icon: 'success',
@@ -166,7 +197,7 @@ const OwnerVisits = () => {
                                 onClick={async () => {
                                   try {
                                     await closeBooking(visit._id);
-                                    setVisits(visits.filter(v => v._id !== visit._id));
+                                    setVisits((prev) => prev.filter(v => v._id !== visit._id));
                                   } catch (e) { console.error(e); }
                                 }}
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
@@ -178,44 +209,54 @@ const OwnerVisits = () => {
 
                           {visit.status === 'visit_completed' && (
                             <>
-                              <button
-                                onClick={async () => {
-                                  const { value: formValues } = await Swal.fire({
-                                    title: 'Confirm Stay',
-                                    html:
-                                      `<div style='text-align:left;margin-bottom:0.5em;'><label for="swal-input1" style='font-size:0.95em;'>Stay Start Date</label><input id="swal-input1" type="date" class="swal2-input" value="${new Date().toISOString().slice(0,10)}" placeholder="Start Date" /></div>` +
-                                      `<div style='text-align:left;'><label for="swal-input2" style='font-size:0.95em;'>Period (months)</label><input id="swal-input2" type="number" min="1" class="swal2-input" value="6" placeholder="Period in months" /></div>`,
-                                    focusConfirm: false,
-                                    showCancelButton: true,
-                                    reverseButtons: true,
-                                    confirmButtonText: 'OK',
-                                    cancelButtonText: 'Cancel',
-                                    preConfirm: () => {
-                                      const startDate = document.getElementById('swal-input1').value;
-                                      const months = document.getElementById('swal-input2').value;
-                                      if (!startDate || !months) {
-                                        Swal.showValidationMessage('Please enter both start date and period');
-                                        return false;
+                              {hasPayment ? (
+                                <button
+                                  onClick={async () => {
+                                    const { value: formValues } = await Swal.fire({
+                                      title: 'Confirm Stay',
+                                      html:
+                                        `<div style='text-align:left;margin-bottom:0.5em;'><label for="swal-input1" style='font-size:0.95em;'>Stay Start Date</label><input id="swal-input1" type="date" class="swal2-input" value="${new Date().toISOString().slice(0,10)}" placeholder="Start Date" /></div>` +
+                                        `<div style='text-align:left;'><label for="swal-input2" style='font-size:0.95em;'>Period (months)</label><input id="swal-input2" type="number" min="1" class="swal2-input" value="6" placeholder="Period in months" /></div>`,
+                                      focusConfirm: false,
+                                      showCancelButton: true,
+                                      reverseButtons: true,
+                                      confirmButtonText: 'OK',
+                                      cancelButtonText: 'Cancel',
+                                      preConfirm: () => {
+                                        const startDate = document.getElementById('swal-input1').value;
+                                        const months = document.getElementById('swal-input2').value;
+                                        if (!startDate || !months) {
+                                          Swal.showValidationMessage('Please enter both start date and period');
+                                          return false;
+                                        }
+                                        return { startDate, months };
                                       }
-                                      return { startDate, months };
-                                    }
-                                  });
-                                  if (!formValues) return;
-                                  try {
-                                    await confirmStay(visit._id, { startDate: formValues.startDate, periodMonths: Number(formValues.months) });
-                                    setVisits(visits.map(v => v._id === visit._id ? { ...v, status: 'student_stayed' } : v));
-                                    await Swal.fire({ title: 'Stay confirmed. Booking moved to student boardings.', icon: 'success', draggable: true });
-                                  } catch (err) { console.error(err); Swal.fire({ title: 'Error confirming stay', icon: 'error' }); }
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
-                              >
-                                Confirm Stay
-                              </button>
+                                    });
+                                    if (!formValues) return;
+                                    try {
+                                      await confirmStay(visit._id, { startDate: formValues.startDate, periodMonths: Number(formValues.months) });
+                                      setVisits((prev) => prev.map(v => v._id === visit._id ? { ...v, status: 'student_stayed' } : v));
+                                      await Swal.fire({ title: 'Stay confirmed. Booking moved to student boardings.', icon: 'success', draggable: true });
+                                    } catch (err) { console.error(err); Swal.fire({ title: err?.message || 'Error confirming stay', icon: 'error' }); }
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
+                                >
+                                  Confirm Stay
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="bg-gray-200 text-gray-600 px-3 py-1 rounded text-xs font-semibold cursor-not-allowed"
+                                >
+                                  Waiting Payment
+                                </button>
+                              )}
                               <button
                                 onClick={async () => {
                                   try {
                                     await closeBooking(visit._id);
-                                    setVisits(visits.filter(v => v._id !== visit._id));
+                                    setVisits((prev) => prev.filter(v => v._id !== visit._id));
                                   } catch (e) { console.error(e); }
                                 }}
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
@@ -227,7 +268,8 @@ const OwnerVisits = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

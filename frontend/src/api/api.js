@@ -85,5 +85,11 @@ export const closeBooking = (id) => API.put(`/bookings/${id}/close`);
 export const extendStay = (id, newEndDate) => API.put(`/bookings/${id}/extend`, { newEndDate });
 export const endStay = (id) => API.put(`/bookings/${id}/end`);
 
+// Payment APIs
+export const createCardPayment = (data) => API.post('/payments/card', data);
+export const getMyPayments = () => API.get('/payments/my');
+export const getOwnerPayments = () => API.get('/payments/owner');
+export const getPaymentById = (id) => API.get(`/payments/${id}`);
+
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');
