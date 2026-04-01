@@ -19,12 +19,6 @@ const BoardingReviews = ({
     return Math.max(0, Math.min(5, Math.round((percent / 100) * 5)));
   };
 
-  const truncateComment = (text, maxLength = 120) => {
-    if (typeof text !== "string") return "";
-    if (text.length <= maxLength) return text;
-    return `${text.slice(0, maxLength).trimEnd()}...`;
-  };
-
   useEffect(() => {
     const fetchReviews = async () => {
       try {
@@ -125,16 +119,9 @@ const BoardingReviews = ({
                   {review.comment}
                 </div>
               ) : (
-                <div className="relative overflow-hidden whitespace-nowrap text-gray-700 text-sm">
-                  <span>{truncateComment(review.comment)}</span>
-                  <span
-                    className="pointer-events-none absolute inset-y-0 right-0 w-10"
-                    style={{
-                      background:
-                        "linear-gradient(to right, rgba(249,250,251,0), rgba(249,250,251,1))",
-                    }}
-                  />
-                </div>
+                <p className="max-w-full truncate text-gray-700 text-sm" title={review.comment}>
+                  {review.comment}
+                </p>
               ))}
           </div>
         ))}
