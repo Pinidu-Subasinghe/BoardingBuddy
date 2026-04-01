@@ -30,6 +30,8 @@ const boardingSchema = new mongoose.Schema(
       enum: ["pending", "inspector assigned", "approved", "rejected"],
       default: "pending",
     },
+    penaltyPoints: { type: Number, default: 0 },
+    penaltyNote: { type: String },
     assignedInspector: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },
