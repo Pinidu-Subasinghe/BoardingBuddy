@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 import { FaStar } from 'react-icons/fa';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiDownload, FiTrash2 } from 'react-icons/fi';
+import * as XLSX from 'xlsx';
 import { deleteAdminReview, getAdminReviews } from '../../api/api';
 import { formatDateTime } from '../../utils/date';
 
@@ -18,6 +19,11 @@ const getMessagePreview = (message, maxWords = 12) => {
 
   const words = normalized.split(/\s+/);
   return `${words.slice(0, maxWords).join(' ')}${words.length > maxWords ? ' ...' : ''}`;
+};
+
+const getRatingsArray = (ratings) => {
+  if (!Array.isArray(ratings)) return [];
+  return ratings.filter((item) => item && item.tag);
 };
 
 const AdminReviewModeration = () => {
@@ -69,6 +75,17 @@ const AdminReviewModeration = () => {
       return bTime - aTime;
     });
   }, [reviews]);
+
+  const allRatingTags = useMemo(() => {
+    const tags = new Set();
+    sortedReviews.forEach((review) => {
+      getRatingsArray(review?.ratings).forEach((item) => {
+        const tag = typeof item.tag === 'string' ? item.tag.trim() : '';
+        if (tag) tags.add(tag);
+      });
+    });
+    return Array.from(tags);
+  }, [sortedReviews]);
 
   const handleDelete = async (review) => {
     const studentName = review?.student?.name || 'Unknown student';
@@ -122,12 +139,87 @@ const AdminReviewModeration = () => {
     setMessageModal(prev => ({ ...prev, open: false }));
   };
 
+  const handleDownloadReport = () => {
+    if (sortedReviews.length === 0) {
+      Swal.fire({
+        title: 'No reviews to export',
+        icon: 'info',
+        draggable: true
+      });
+      return;
+    }
+
+    try {
+      const reportRows = sortedReviews.map((review, index) => {
+        const ratings = getRatingsArray(review?.ratings);
+        const ratingMap = {};
+
+        ratings.forEach((item) => {
+          const tag = typeof item.tag === 'string' ? item.tag.trim() : '';
+          if (!tag) return;
+          ratingMap[tag] = item.score;
+        });
+
+        const row = {
+          No: index + 1,
+          'Review Id': review?._id || '',
+          Student: review?.student?.name || 'Unknown student',
+          Boarding: review?.boarding?.title || 'Unknown boarding',
+          'Overall Rating (%)': review?.overallRating ?? 0,
+          'Review Message': review?.comment?.trim() || 'No review message',
+          'Updated At': formatDateTime(review?.updatedAt || review?.createdAt),
+          'Created At': formatDateTime(review?.createdAt),
+          'Detailed Ratings': ratings.length
+            ? ratings.map((item) => `${item.tag}: ${item.score}/5`).join(' | ')
+            : 'No detailed ratings'
+        };
+
+        allRatingTags.forEach((tag) => {
+          row[`Rating - ${tag}`] = ratingMap[tag] ?? '';
+        });
+
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(reportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Review Moderation');
+
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `review-moderation-report-${today}.xlsx`);
+
+      Swal.fire({
+        title: 'Excel report downloaded',
+        icon: 'success',
+        timer: 1200,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      Swal.fire({
+        title: 'Report generation failed',
+        text: error?.message || 'Could not generate Excel report',
+        icon: 'error',
+        draggable: true
+      });
+    }
+  };
+
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div className="flex flex-col gap-3 pr-14 sm:pr-16 md:pr-20 lg:pr-24 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
           Review Moderation
         </h3>
+
+        <button
+          type="button"
+          onClick={handleDownloadReport}
+          disabled={loading || sortedReviews.length === 0}
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FiDownload className="text-base" aria-hidden="true" />
+          Download Excel Report
+        </button>
       </div>
 
       {loading ? (
