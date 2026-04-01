@@ -232,14 +232,16 @@ const StudentBoardings = () => {
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleCloseVisitRequest(request)}
-                    disabled={closeRequestLoadingId === request._id}
-                    className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
-                  >
-                    {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
-                  </button>
+                  {!paidBookingIds.has(request._id) && (
+                    <button
+                      type="button"
+                      onClick={() => handleCloseVisitRequest(request)}
+                      disabled={closeRequestLoadingId === request._id}
+                      className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+                    >
+                      {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

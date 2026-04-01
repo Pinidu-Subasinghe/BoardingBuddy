@@ -252,17 +252,19 @@ const OwnerVisits = () => {
                                   Waiting Payment
                                 </button>
                               )}
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await closeBooking(visit._id);
-                                    setVisits((prev) => prev.filter(v => v._id !== visit._id));
-                                  } catch (e) { console.error(e); }
-                                }}
-                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
-                              >
-                                Close Request
-                              </button>
+                              {!hasPayment && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await closeBooking(visit._id);
+                                      setVisits((prev) => prev.filter(v => v._id !== visit._id));
+                                    } catch (e) { console.error(e); }
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
+                                >
+                                  Close Request
+                                </button>
+                              )}
                             </>
                           )}
 
