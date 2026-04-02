@@ -3,6 +3,7 @@ import { getBoardings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import DashboardShell from '../components/DashboardShell';
 import InspectorInquiries from '../components/inspector/InspectorInquiries';
+import InspectorAssignedTasks from '../components/inspector/InspectorAssignedTasks';
 import InspectorReviewedTasks from '../components/inspector/InspectorReviewedTasks';
 import InspectorProfile from '../components/inspector/InspectorProfile';
 
@@ -57,6 +58,8 @@ const InspectorDashboard = () => {
 
   const menuItems = [
     { key: 'profile', label: 'My Profile' },
+    { key: 'assigned-tasks', label: 'Assigned Tasks' },
+    { key: 'reviewed-tasks', label: 'Reviewed Tasks' },
     { key: 'inquiries', label: 'My Inquiries' },
   ];
 
@@ -69,27 +72,19 @@ const InspectorDashboard = () => {
       logout={logout}
     >
       <div className="px-4 py-6 md:px-8">
-        {activeMenu === 'inquiries' ? (
+        {activeMenu === 'profile' ? (
+          <InspectorProfile />
+        ) : activeMenu === 'inquiries' ? (
           <InspectorInquiries />
         ) : loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
           </div>
+        ) : activeMenu === 'reviewed-tasks' ? (
+          <InspectorReviewedTasks boardings={boardings} user={user} />
         ) : (
-          <>
-            <h2 className="mb-6 text-2xl font-bold text-gray-900 sm:text-3xl">
-              Assigned Boardings
-            </h2>
-
-          {activeMenu === 'reviewed-tasks' && (
-            <InspectorReviewedTasks boardings={boardings} user={user} />
-          )}
-
-          {activeMenu === 'profile' && (
-            <InspectorProfile />
-          )}
-        </>
-      )}
+          <InspectorAssignedTasks boardings={boardings} setBoardings={setBoardings} />
+        )}
       </div>
     </DashboardShell>
   );

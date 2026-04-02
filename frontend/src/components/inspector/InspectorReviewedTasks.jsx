@@ -200,12 +200,12 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
 
   return (
     <div className="px-4 py-6 md:px-8">
-      <div className="mb-6 flex flex-col gap-3 pr-14 sm:pr-16 md:pr-20 lg:pr-24 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Reviewed Tasks</h2>
-          <p className="text-sm text-gray-500">Task history after inspection completion</p>
-        </div>
+      <div className="mb-4">
+        <h2 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Reviewed Tasks</h2>
+        <p className="text-sm text-gray-500">Task history after inspection completion</p>
+      </div>
 
+      <div className="mb-6 flex justify-end">
         <button
           type="button"
           onClick={handleDownloadPdf}
@@ -227,12 +227,11 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
             <table className="min-w-full text-sm text-left text-gray-700">
               <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-xs tracking-wide">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3">Boarding</th>
+                  <th className="px-4 sm:px-6 py-3">Boarding Name</th>
+                  <th className="px-4 sm:px-6 py-3">Location</th>
                   <th className="px-4 sm:px-6 py-3">Status</th>
                   <th className="px-4 sm:px-6 py-3">Overall</th>
                   <th className="px-4 sm:px-6 py-3">Safety</th>
-                  <th className="px-4 sm:px-6 py-3">Lifestyle Ratings</th>
-                  <th className="px-4 sm:px-6 py-3">Remark</th>
                   <th className="px-4 sm:px-6 py-3">Reviewed On</th>
                 </tr>
               </thead>
@@ -240,28 +239,39 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
                 {reviewedTasks.map((task) => {
                   const status = String(task?.status || '').toLowerCase();
                   const rating = ratingsByBoarding[String(task._id)];
+                  const safety = String(rating?.safetyBadge || '').toLowerCase();
+
+                  const statusBadgeClass =
+                    status === 'approved'
+                      ? 'bg-green-100 text-green-700 ring-green-200'
+                      : status === 'rejected'
+                      ? 'bg-red-100 text-red-700 ring-red-200'
+                      : 'bg-gray-100 text-gray-700 ring-gray-200';
+
+                  const safetyBadgeClass =
+                    safety === 'high'
+                      ? 'bg-green-100 text-green-700 ring-green-200'
+                      : safety === 'medium'
+                      ? 'bg-yellow-100 text-yellow-700 ring-yellow-200'
+                      : safety === 'low'
+                      ? 'bg-red-100 text-red-700 ring-red-200'
+                      : 'bg-gray-100 text-gray-700 ring-gray-200';
 
                   return (
                     <tr key={task._id} className="hover:bg-gray-50/80 transition-colors">
-                      <td className="px-4 sm:px-6 py-4 align-top">
-                        <p className="font-semibold text-gray-900">{task.title}</p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {task.address} - {task.city}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Rent: ${task.monthlyRent} | Capacity: {task.totalCapacity}
-                        </p>
+                      <td className="px-4 sm:px-6 py-4 align-top font-semibold text-gray-900">
+                        {task.title || 'Boarding'}
                       </td>
 
-                      <td className="px-4 sm:px-6 py-4 align-top">
+                      <td className="px-4 sm:px-6 py-4 align-top text-gray-600">
+                        {[task.address, task.city].filter(Boolean).join(' - ') || '-'}
+                      </td>
+
+                      <td className="px-4 sm:px-6 py-4 align-top whitespace-nowrap">
                         <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                            status === 'approved'
-                              ? 'bg-green-100 text-green-700 ring-green-200'
-                              : 'bg-rose-100 text-rose-700 ring-rose-200'
-                          }`}
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusBadgeClass}`}
                         >
-                          {status === 'approved' ? 'Approved' : 'Rejected'}
+                          {status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'N/A'}
                         </span>
                       </td>
 
@@ -270,40 +280,14 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
                       </td>
 
                       <td className="px-4 sm:px-6 py-4 align-top whitespace-nowrap">
-                        {loadingRatings ? 'Loading...' : rating?.safetyBadge || 'N/A'}
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 align-top">
                         {loadingRatings ? (
-                          <span className="text-gray-500">Loading...</span>
-                        ) : rating && (rating.lifestyleRatings || []).length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 max-w-xs">
-                            {rating.lifestyleRatings.map((item, index) => (
-                              <span
-                                key={`${task._id}-rate-${index}`}
-                                className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700"
-                              >
-                                {item.tag}: {item.stars}/5
-                              </span>
-                            ))}
-                          </div>
+                          'Loading...'
                         ) : (
-                          <span className="text-gray-500">N/A</span>
-                        )}
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 align-top">
-                        {loadingRatings ? (
-                          <span className="text-gray-500">Loading...</span>
-                        ) : rating?.remark ? (
-                          <p
-                            className="text-sm text-gray-700 whitespace-pre-wrap break-words max-w-xs"
-                            style={{ overflowWrap: 'anywhere' }}
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${safetyBadgeClass}`}
                           >
-                            {rating.remark}
-                          </p>
-                        ) : (
-                          <span className="text-gray-500">-</span>
+                            {rating?.safetyBadge || 'N/A'}
+                          </span>
                         )}
                       </td>
 
