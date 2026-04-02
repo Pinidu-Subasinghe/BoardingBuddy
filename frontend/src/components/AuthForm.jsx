@@ -9,6 +9,43 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
 const MOBILE_REGEX = /^0\d{9}$/;
 const NAME_REGEX = /^[A-Za-z\s]+$/;
+const TEN_DIGIT_REGEX = /^\d{10}$/;
+const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
+
+const BANK_OPTIONS = [
+  'Amana Bank PLC',
+  'Bank of Ceylon (BOC)',
+  'Cargills Bank Limited',
+  'Commercial Bank of Ceylon PLC',
+  'DFCC Bank PLC',
+  'Hatton National Bank PLC (HNB)',
+  'HSBC (Hongkong and Shanghai Banking Corporation)',
+  'National Development Bank PLC (NDB)',
+  'Nations Trust Bank PLC (NTB)',
+  'Pan Asia Banking Corporation PLC',
+  "People's Bank",
+  'Sampath Bank PLC',
+  'Seylan Bank PLC',
+  'Standard Chartered Bank',
+  'Union Bank of Colombo PLC'
+];
+
+const toDateInputMax = () => new Date().toISOString().split('T')[0];
+
+const formatAccountNumber = (digits = '') => {
+  const chunks = digits.match(/\d{1,4}/g);
+  return chunks ? chunks.join(' ') : '';
+};
+
+const isValidPastOrTodayDate = (value) => {
+  if (!value) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  parsed.setHours(0, 0, 0, 0);
+  return parsed <= today;
+};
 
 const AuthForm = () => {
   const { login, register, closeAuth } = useContext(AuthContext);
@@ -16,6 +53,8 @@ const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [guardianExpanded, setGuardianExpanded] = useState(true);
+  const [paymentExpanded, setPaymentExpanded] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -25,7 +64,15 @@ const AuthForm = () => {
     gender: 'male',
     contactNumber: '',
     role: 'student',
-    university: ''
+    university: '',
+    dob: '',
+    guardianType: 'Father',
+    guardianName: '',
+    guardianPhone: '',
+    paymentAccountNumber: '',
+    paymentBankName: '',
+    paymentBranchName: '',
+    paymentAccountHolderName: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -42,6 +89,21 @@ const AuthForm = () => {
       }
       digitsOnly = digitsOnly.slice(0, 10);
       setFormData({ ...formData, contactNumber: digitsOnly });
+      setErrors((prev) => ({ ...prev, contactNumber: '' }));
+      return;
+    }
+
+    if (name === 'guardianPhone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, guardianPhone: digitsOnly });
+      setErrors((prev) => ({ ...prev, guardianPhone: '' }));
+      return;
+    }
+
+    if (name === 'paymentAccountNumber') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
+      setFormData({ ...formData, paymentAccountNumber: digitsOnly });
+      setErrors((prev) => ({ ...prev, paymentAccountNumber: '' }));
       return;
     }
 
@@ -52,6 +114,16 @@ const AuthForm = () => {
     }
 
     setFormData({ ...formData, [name]: value });
+    if (
+      name === 'email' ||
+      name === 'dob' ||
+      name === 'guardianName' ||
+      name === 'paymentBankName' ||
+      name === 'paymentBranchName' ||
+      name === 'paymentAccountHolderName'
+    ) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
   const validateForm = () => {
@@ -74,6 +146,12 @@ const AuthForm = () => {
         nextErrors.contactNumber = 'Mobile number must start with 0 and be 10 digits';
       }
 
+      if (!formData.dob) {
+        nextErrors.dob = 'Date of birth is required';
+      } else if (!isValidPastOrTodayDate(formData.dob)) {
+        nextErrors.dob = 'Date of birth cannot be in the future';
+      }
+
       if (!STRONG_PASSWORD_REGEX.test(formData.password)) {
         nextErrors.password =
           'Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)';
@@ -83,6 +161,34 @@ const AuthForm = () => {
         nextErrors.confirmPassword = 'Confirm Password is required';
       } else if (formData.password !== formData.confirmPassword) {
         nextErrors.confirmPassword = 'Passwords do not match';
+      }
+
+      if (formData.role === 'student') {
+        if (!formData.guardianName.trim()) {
+          nextErrors.guardianName = 'Guardian name is required';
+        }
+        if (!formData.guardianPhone) {
+          nextErrors.guardianPhone = 'Guardian phone is required';
+        } else if (!TEN_DIGIT_REGEX.test(formData.guardianPhone)) {
+          nextErrors.guardianPhone = 'Guardian phone must be exactly 10 digits';
+        }
+      }
+
+      if (formData.role === 'owner') {
+        if (!formData.paymentAccountNumber) {
+          nextErrors.paymentAccountNumber = 'Account number is required';
+        } else if (!ACCOUNT_NUMBER_REGEX.test(formData.paymentAccountNumber)) {
+          nextErrors.paymentAccountNumber = 'Account number must be 12 to 16 digits';
+        }
+        if (!formData.paymentBankName) {
+          nextErrors.paymentBankName = 'Bank name is required';
+        }
+        if (!formData.paymentBranchName.trim()) {
+          nextErrors.paymentBranchName = 'Branch name is required';
+        }
+        if (!formData.paymentAccountHolderName.trim()) {
+          nextErrors.paymentAccountHolderName = 'Account holder name is required';
+        }
       }
     }
 
@@ -107,7 +213,36 @@ const AuthForm = () => {
         Swal.fire({ title: 'Signed in!', icon: 'success', draggable: true });
         closeAuth();
       } else {
-        userData = await register(formData);
+        const payload = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          gender: formData.gender,
+          contactNumber: formData.contactNumber,
+          role: formData.role,
+          university: formData.university,
+          dob: formData.dob,
+        };
+
+        if (formData.role === 'student') {
+          payload.guardian = {
+            type: formData.guardianType,
+            name: formData.guardianName,
+            phone: formData.guardianPhone,
+          };
+        }
+
+        if (formData.role === 'owner') {
+          payload.paymentDetails = {
+            accountNumber: formData.paymentAccountNumber,
+            bankName: formData.paymentBankName,
+            branchName: formData.paymentBranchName,
+            accountHolderName: formData.paymentAccountHolderName,
+          };
+        }
+
+        userData = await register(payload);
         Swal.fire({ title: 'Account created', icon: 'success', draggable: true });
         closeAuth();
       }
@@ -207,6 +342,21 @@ const AuthForm = () => {
                 </div>
               </div>
 
+              <div>
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleChange}
+                  max={toDateInputMax()}
+                  className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.dob ? 'border-red-500' : ''}`}
+                  required
+                />
+                {errors.dob && (
+                  <p className="text-xs text-red-500 mt-1">{errors.dob}</p>
+                )}
+              </div>
+
               <select
                 name="role"
                 value={formData.role}
@@ -218,20 +368,161 @@ const AuthForm = () => {
               </select>
 
               {formData.role === 'student' && (
-                <select
-                  name="university"
-                  value={formData.university}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  required
-                >
-                  <option value="" disabled>Select university</option>
-                  {universityOptions.map(([code, name]) => (
-                    <option key={code} value={code}>
-                      {code} - {name}
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    name="university"
+                    value={formData.university}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    required
+                  >
+                    <option value="" disabled>Select university</option>
+                    {universityOptions.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {code} - {name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="border border-gray-200 rounded-lg p-3">
+                    <button
+                      type="button"
+                      onClick={() => setGuardianExpanded((prev) => !prev)}
+                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-700 uppercase tracking-wide"
+                    >
+                      <span>Guardian Details</span>
+                      <span className="text-gray-500">{guardianExpanded ? '−' : '+'}</span>
+                    </button>
+                    {guardianExpanded && (
+                      <div className="space-y-2 mt-3">
+                        <select
+                          name="guardianType"
+                          value={formData.guardianType}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Other">Other</option>
+                        </select>
+
+                        <div>
+                          <input
+                            type="text"
+                            name="guardianName"
+                            placeholder="Guardian name"
+                            value={formData.guardianName}
+                            onChange={handleChange}
+                            className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.guardianName ? 'border-red-500' : ''}`}
+                            required
+                          />
+                          {errors.guardianName && (
+                            <p className="text-xs text-red-500 mt-1">{errors.guardianName}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            name="guardianPhone"
+                            placeholder="Guardian phone"
+                            value={formData.guardianPhone}
+                            onChange={handleChange}
+                            inputMode="numeric"
+                            maxLength={10}
+                            className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.guardianPhone ? 'border-red-500' : ''}`}
+                            required
+                          />
+                          {errors.guardianPhone && (
+                            <p className="text-xs text-red-500 mt-1">{errors.guardianPhone}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {formData.role === 'owner' && (
+                <div className="border border-gray-200 rounded-lg p-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentExpanded((prev) => !prev)}
+                    className="w-full flex items-center justify-between text-xs font-semibold text-gray-700 uppercase tracking-wide"
+                  >
+                    <span>Payment Details</span>
+                    <span className="text-gray-500">{paymentExpanded ? '−' : '+'}</span>
+                  </button>
+                  {paymentExpanded && (
+                    <div className="space-y-2 mt-3">
+                      <div>
+                        <input
+                          type="text"
+                          name="paymentAccountNumber"
+                          placeholder="Account number"
+                          value={formatAccountNumber(formData.paymentAccountNumber)}
+                          onChange={handleChange}
+                          inputMode="numeric"
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.paymentAccountNumber ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        {errors.paymentAccountNumber && (
+                          <p className="text-xs text-red-500 mt-1">{errors.paymentAccountNumber}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <input
+                          type="text"
+                          name="paymentAccountHolderName"
+                          placeholder="Account holder name"
+                          value={formData.paymentAccountHolderName}
+                          onChange={handleChange}
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.paymentAccountHolderName ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        {errors.paymentAccountHolderName && (
+                          <p className="text-xs text-red-500 mt-1">{errors.paymentAccountHolderName}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <select
+                          name="paymentBankName"
+                          value={formData.paymentBankName}
+                          onChange={handleChange}
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.paymentBankName ? 'border-red-500' : ''}`}
+                          required
+                        >
+                          <option value="" disabled>Select bank</option>
+                          {BANK_OPTIONS.map((bank) => (
+                            <option key={bank} value={bank}>
+                              {bank}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.paymentBankName && (
+                          <p className="text-xs text-red-500 mt-1">{errors.paymentBankName}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <input
+                          type="text"
+                          name="paymentBranchName"
+                          placeholder="Branch name"
+                          value={formData.paymentBranchName}
+                          onChange={handleChange}
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none ${errors.paymentBranchName ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        {errors.paymentBranchName && (
+                          <p className="text-xs text-red-500 mt-1">{errors.paymentBranchName}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}

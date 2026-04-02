@@ -27,7 +27,27 @@ const userSchema = new mongoose.Schema({
     required: function () {
       return this.role === 'student';
     }
-  }
+  },
+
+  dob: { type: Date },
+
+  guardian: {
+    type: {
+      type: String,
+      enum: ['Father', 'Mother', 'Other']
+    },
+    name: { type: String },
+    phone: { type: String, match: /^\d{10}$/ }
+  },
+
+  paymentDetails: {
+    accountNumber: { type: String, match: /^\d{12,16}$/ },
+    bankName: { type: String },
+    branchName: { type: String },
+    accountHolderName: { type: String }
+  },
+
+  profileImage: { type: String }
 
 }, { timestamps: true });
 
