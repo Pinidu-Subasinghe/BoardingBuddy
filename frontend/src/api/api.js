@@ -93,3 +93,12 @@ export const getPaymentById = (id) => API.get(`/payments/${id}`);
 
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');
+
+// Inquiry APIs
+export const createInquiry = (data) => API.post('/inquiries', data);
+export const getMyInquiries = () => API.get('/inquiries/my');
+export const getAllInquiries = () => API.get('/inquiries');
+export const updateInquiryStatus = (id, status) => API.put(`/inquiries/${id}/status`, { status });
+export const addInquiryResponse = (id, response) => API.put(`/inquiries/${id}/response`, { response });
+export const applyInquiryPenalty = (id, payload) => API.post(`/inquiries/${id}/penalty`, payload);
+export const deleteInquiry = (id) => API.delete(`/inquiries/${id}`);

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { getBoardings, rateBoarding } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import DashboardShell from '../components/DashboardShell';
+import InspectorInquiries from '../components/inspector/InspectorInquiries';
 
 const StarPicker = ({ value, onChange }) => {
   const stars = [1, 2, 3, 4, 5];
@@ -151,7 +152,10 @@ const InspectorDashboard = () => {
     }
   };
 
-  const menuItems = [{ key: 'profile', label: 'My Profile' }];
+  const menuItems = [
+    { key: 'profile', label: 'My Profile' },
+    { key: 'inquiries', label: 'My Inquiries' },
+  ];
 
   return (
     <DashboardShell
@@ -162,7 +166,9 @@ const InspectorDashboard = () => {
       logout={logout}
     >
       <div className="px-4 py-6 md:px-8">
-        {loading ? (
+        {activeMenu === 'inquiries' ? (
+          <InspectorInquiries />
+        ) : loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
           </div>
