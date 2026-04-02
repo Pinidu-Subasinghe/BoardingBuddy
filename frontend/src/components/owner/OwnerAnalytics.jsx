@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { getOwnerAnalytics } from '../../api/api';
 import { formatDate } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const OwnerAnalytics = () => {
   const { user } = useContext(AuthContext);
@@ -45,17 +46,7 @@ const OwnerAnalytics = () => {
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="min-h-[280px] flex items-center justify-center p-8">
-        <div className="flex items-center gap-3 text-lg font-medium text-indigo-600">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-          </svg>
-          Loading analytics...
-        </div>
-      </div>
-    );
+    return <LoadingAnimation text="Loading analytics..." />;
   }
 
   if (error) {

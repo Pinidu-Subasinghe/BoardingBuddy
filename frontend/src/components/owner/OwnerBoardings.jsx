@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
+import Swal from 'sweetalert2';
 import { AuthContext } from '../../context/AuthContext';
 import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding, deleteBoarding as apiDeleteBoarding } from '../../api/api';
 import OwnerBoardingCard from './OwnerBoardingCard';
 import OwnerAddBoarding from './OwnerAddBoarding';
 import OwnerUpdateBoarding from './OwnerUpdateBoarding';
+import LoadingAnimation from '../LoadingAnimation';
 
 
 const OwnerBoardings = () => {
@@ -62,7 +64,9 @@ const OwnerBoardings = () => {
       description: form.description,
       address: form.address,
       city: form.city,
-      nearestUniversities: form.nearestUniversities ? form.nearestUniversities.split(',').map(s => s.trim()) : [],
+      nearestUniversities: form.nearestUniversities
+        ? form.nearestUniversities.split(',').map(s => s.trim()).filter(Boolean)
+        : [],
       monthlyRent: Number(form.monthlyRent) || 0,
       boardingType: form.boardingType,
       lifestyleTags: form.lifestyleTags,
@@ -91,10 +95,28 @@ const OwnerBoardings = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this boarding?')) return;
+    const result = await Swal.fire({
+      title: 'Delete this boarding?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       await apiDeleteBoarding(id);
       setBoardings(prev => prev.filter(b => b._id !== id));
+      await Swal.fire({
+        title: 'Deleted',
+        text: 'Boarding deleted successfully.',
+        icon: 'success',
+        draggable: true,
+      });
     } catch (err) {
       console.error('Error deleting boarding:', err);
       alert(err.response?.data?.message || 'Error deleting boarding');
@@ -106,6 +128,11 @@ const OwnerBoardings = () => {
       const res = await apiUpdateBoarding(id, payload);
       setBoardings(prev => prev.map(b => (b._id === id ? res.data : b)));
       setEditingBoarding(null);
+      await Swal.fire({
+        title: 'Boarding updated successfully',
+        icon: 'success',
+        draggable: true,
+      });
     } catch (err) {
       console.error('Error updating boarding:', err);
       alert(err.response?.data?.message || 'Error updating boarding');
@@ -113,17 +140,7 @@ const OwnerBoardings = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-lg font-medium text-indigo-600">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          Loading your boardings...
-        </div>
-      </div>
-    );
+    return <LoadingAnimation text="Loading my boardings..." containerClassName="min-h-screen" />;
   }
 
   return (

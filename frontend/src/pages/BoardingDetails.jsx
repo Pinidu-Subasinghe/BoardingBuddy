@@ -9,6 +9,7 @@ import {
 import { AuthContext } from "../context/AuthContext";
 import BoardingReviews from "../components/BoardingReviews";
 import BoardingDetailsCard from "../components/BoardingDetailsCard";
+import LoadingAnimation from "../components/LoadingAnimation";
 
 const BoardingDetails = () => {
   const { id } = useParams();
@@ -74,7 +75,7 @@ const BoardingDetails = () => {
     setVisitOpen(false);
   };
 
-  if (loading) return <p className="text-center py-10">Loading...</p>;
+  if (loading) return <LoadingAnimation text="Loading boarding details..." />;
   if (!boarding)
     return <p className="text-center py-10">Boarding not found.</p>;
 
