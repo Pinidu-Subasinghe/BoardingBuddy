@@ -3,26 +3,8 @@ import { getBoardings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import DashboardShell from '../components/DashboardShell';
 import InspectorInquiries from '../components/inspector/InspectorInquiries';
-
-const StarPicker = ({ value, onChange }) => {
-  const stars = [1, 2, 3, 4, 5];
-  return (
-    <div className="flex items-center gap-1">
-      {stars.map((s) => (
-        <button
-          type="button"
-          key={s}
-          onClick={() => onChange(s)}
-          className={`text-2xl transition-colors duration-150 hover:scale-110 active:scale-95 ${
-            s <= value ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300'
-          }`}
-        >
-          ★
-        </button>
-      ))}
-    </div>
-  );
-};
+import InspectorReviewedTasks from '../components/inspector/InspectorReviewedTasks';
+import InspectorProfile from '../components/inspector/InspectorProfile';
 
 const InspectorDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -108,6 +90,7 @@ const InspectorDashboard = () => {
           )}
         </>
       )}
+      </div>
     </DashboardShell>
   );
 };
