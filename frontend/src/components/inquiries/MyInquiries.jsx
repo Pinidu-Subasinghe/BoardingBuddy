@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { FaListUl, FaThLarge } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import { createInquiry, deleteInquiry, getBoardings, getMyInquiries } from '../../api/api';
 import InquiryCard from './InquiryCard';
@@ -96,20 +97,24 @@ const MyInquiries = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md ${
+                aria-label="List view"
+                title="List view"
+                className={`flex h-8 w-8 items-center justify-center rounded-md ${
                   viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                List
+                <FaListUl className="text-sm" />
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md ${
+                aria-label="Grid view"
+                title="Grid view"
+                className={`flex h-8 w-8 items-center justify-center rounded-md ${
                   viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                Grid
+                <FaThLarge className="text-sm" />
               </button>
             </div>
           )}

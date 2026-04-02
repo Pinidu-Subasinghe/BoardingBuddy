@@ -17,13 +17,19 @@ const StudentProfile = () => {
     email: user?.email || '',
     contactNumber: user?.contactNumber || '',
     university: user?.university || '',
+    guardianName: user?.guardian?.name || '',
+    guardianPhone: user?.guardian?.phone || '',
   });
+
+  const [profileImage, setProfileImage] = useState(user?.profileImage || '');
 
   const [editMode, setEditMode] = useState({
     name: false,
     email: false,
     contactNumber: false,
     university: false,
+    guardianName: false,
+    guardianPhone: false,
   });
 
   const [changed, setChanged] = useState(false);
@@ -41,7 +47,11 @@ const StudentProfile = () => {
     email: useRef(null),
     contactNumber: useRef(null),
     university: useRef(null),
+    guardianName: useRef(null),
+    guardianPhone: useRef(null),
   };
+
+  const profileInputRef = useRef(null);
 
   const token = localStorage.getItem('token');
 
@@ -51,7 +61,10 @@ const StudentProfile = () => {
   };
 
   const onChange = (key, value) => {
-    const nextValue = key === 'contactNumber' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    const nextValue =
+      key === 'contactNumber' || key === 'guardianPhone'
+        ? value.replace(/\D/g, '').slice(0, 10)
+        : value;
 
     setFields(f => {
       const next = { ...f, [key]: nextValue };
@@ -59,14 +72,29 @@ const StudentProfile = () => {
         next.name !== (user?.name || '') ||
         next.email !== (user?.email || '') ||
         next.contactNumber !== (user?.contactNumber || '') ||
-        next.university !== (user?.university || '')
+        next.university !== (user?.university || '') ||
+        next.guardianName !== (user?.guardian?.name || '') ||
+        next.guardianPhone !== (user?.guardian?.phone || '') ||
+        profileImage !== (user?.profileImage || '')
       );
       return next;
     });
 
-    if (key === 'email' || key === 'contactNumber') {
+    if (key === 'email' || key === 'contactNumber' || key === 'guardianPhone' || key === 'guardianName') {
       setErrors((prev) => ({ ...prev, [key]: '' }));
     }
+  };
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setProfileImage(result);
+      setChanged(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const validateProfileFields = () => {
@@ -82,6 +110,16 @@ const StudentProfile = () => {
       nextErrors.contactNumber = 'Mobile number must be exactly 10 digits';
     }
 
+    if (!fields.guardianName.trim()) {
+      nextErrors.guardianName = 'Guardian name is required';
+    }
+
+    if (!fields.guardianPhone) {
+      nextErrors.guardianPhone = 'Guardian phone is required';
+    } else if (!MOBILE_REGEX.test(fields.guardianPhone)) {
+      nextErrors.guardianPhone = 'Guardian phone must be exactly 10 digits';
+    }
+
     return nextErrors;
   };
 
@@ -93,7 +131,20 @@ const StudentProfile = () => {
     }
 
     try {
-      const res = await updateProfile(fields);
+      const payload = {
+        name: fields.name,
+        email: fields.email,
+        contactNumber: fields.contactNumber,
+        university: fields.university,
+        guardian: {
+          name: fields.guardianName,
+          phone: fields.guardianPhone,
+          type: user?.guardian?.type || 'Other',
+        },
+        profileImage,
+      };
+
+      const res = await updateProfile(payload);
       const data = res.data;
       localStorage.setItem('token', data.token || token);
       localStorage.setItem('user', JSON.stringify(data));
@@ -144,6 +195,40 @@ const StudentProfile = () => {
     <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <h3 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Your Profile</h3>
+
+        <div className="mb-6 flex flex-col items-center">
+          <div className="relative">
+            <div className="rounded-full bg-gradient-to-br from-black via-gray-900 to-blue-600 p-1">
+              <div className="h-32 w-32 rounded-full border border-gray-200 bg-gray-100 overflow-hidden flex items-center justify-center">
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-3xl font-semibold text-gray-500">
+                  {(user?.name || 'U').charAt(0).toUpperCase()}
+                </span>
+              )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => profileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center text-gray-600 hover:text-indigo-600"
+              aria-label="Edit profile image"
+              title="Edit profile image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-9.9 9.9a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464l9.9-9.9z" />
+              </svg>
+            </button>
+            <input
+              ref={profileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleProfileImageChange}
+            />
+          </div>
+        </div>
 
         {/* Profile Info Card */}
         <div className="bg-white shadow-lg shadow-gray-200/60 rounded-2xl overflow-hidden border border-gray-100">
@@ -232,6 +317,68 @@ const StudentProfile = () => {
                   )}
                 </label>
               ))}
+            </div>
+
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Guardian Details</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {['guardianName', 'guardianPhone'].map((key) => (
+                  <label key={key} className="block">
+                    <span className="text-sm font-medium text-gray-700 capitalize tracking-wide">
+                      {key === 'guardianName' ? 'Guardian Name' : 'Guardian Phone'}
+                    </span>
+                    <div className="mt-1.5 relative flex items-center gap-2 group">
+                      <input
+                        type="text"
+                        ref={refs[key]}
+                        readOnly={!editMode[key]}
+                        value={fields[key]}
+                        onChange={(e) => onChange(key, e.target.value)}
+                        inputMode={key === 'guardianPhone' ? 'numeric' : undefined}
+                        maxLength={key === 'guardianPhone' ? 10 : undefined}
+                        className={`
+                          block w-full rounded-lg border-gray-300 
+                          shadow-sm 
+                          focus:border-indigo-500 focus:ring-indigo-500 
+                          focus:ring-1 focus:ring-opacity-50
+                          transition-all duration-200
+                          ${errors[key]
+                            ? 'border-red-500 ring-1 ring-red-100'
+                            : editMode[key] 
+                            ? 'bg-white border-indigo-400 ring-1 ring-indigo-200' 
+                            : 'bg-gray-50/70 border-gray-200 text-gray-800 cursor-default'}
+                          py-2.5 px-4 text-base
+                        `}
+                      />
+                      {!editMode[key] ? (
+                        <button
+                          onClick={() => toggleEdit(key)}
+                          className="p-2 text-gray-500 hover:text-indigo-600 
+                                   opacity-70 group-hover:opacity-100 transition-opacity duration-150"
+                          title="Edit"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-9.9 9.9a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464l9.9-9.9z" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setEditMode(m => ({ ...m, [key]: false }))}
+                          className="p-2 text-gray-500 hover:text-green-600 transition-colors"
+                          title="Done"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    {errors[key] && (
+                      <p className="text-xs text-red-500 mt-1">{errors[key]}</p>
+                    )}
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="mt-8 flex justify-end">

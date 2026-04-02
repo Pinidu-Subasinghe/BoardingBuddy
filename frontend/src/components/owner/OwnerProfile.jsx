@@ -25,6 +25,8 @@ const OwnerProfile = () => {
     contactNumber: user?.contactNumber || '',
   });
 
+  const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+
   const [editMode, setEditMode] = useState({
     name: false,
     email: false,
@@ -38,6 +40,7 @@ const OwnerProfile = () => {
     email: useRef(null),
     contactNumber: useRef(null),
   };
+  const profileInputRef = useRef(null);
   const token = localStorage.getItem('token');
 
   const toggleEdit = (key) => {
@@ -53,7 +56,8 @@ const OwnerProfile = () => {
       setChanged(
         next.name !== (user?.name || '') ||
         next.email !== (user?.email || '') ||
-        next.contactNumber !== (user?.contactNumber || '')
+        next.contactNumber !== (user?.contactNumber || '') ||
+        profileImage !== (user?.profileImage || '')
       );
       return next;
     });
@@ -61,6 +65,18 @@ const OwnerProfile = () => {
     if (key === 'email' || key === 'contactNumber') {
       setErrors((prev) => ({ ...prev, [key]: '' }));
     }
+  };
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setProfileImage(result);
+      setChanged(true);
+    };
+    reader.readAsDataURL(file);
   };
 
   const validateProfileFields = () => {
@@ -87,7 +103,14 @@ const OwnerProfile = () => {
     }
 
     try {
-      const res = await updateProfile(fields);
+      const payload = {
+        name: fields.name,
+        email: fields.email,
+        contactNumber: fields.contactNumber,
+        profileImage,
+      };
+
+      const res = await updateProfile(payload);
       let data = res.data;
       localStorage.setItem('token', data.token || token);
       localStorage.setItem('user', JSON.stringify(data));
@@ -124,6 +147,40 @@ const OwnerProfile = () => {
     <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <h3 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">My Profile</h3>
+
+        <div className="mb-6 flex flex-col items-center">
+          <div className="relative">
+            <div className="rounded-full bg-gradient-to-br from-black via-gray-900 to-blue-600 p-1">
+              <div className="h-32 w-32 rounded-full border border-gray-200 bg-gray-100 overflow-hidden flex items-center justify-center">
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-3xl font-semibold text-gray-500">
+                  {(user?.name || 'U').charAt(0).toUpperCase()}
+                </span>
+              )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => profileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center text-gray-600 hover:text-indigo-600"
+              aria-label="Edit profile image"
+              title="Edit profile image"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-9.9 9.9a1 1 0 01-.464.263l-4 1a1 1 0 01-1.213-1.213l1-4a1 1 0 01.263-.464l9.9-9.9z" />
+              </svg>
+            </button>
+            <input
+              ref={profileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleProfileImageChange}
+            />
+          </div>
+        </div>
 
         {/* Profile Info Card */}
         <div className="bg-white shadow-lg shadow-gray-200/60 rounded-2xl overflow-hidden border border-gray-100">
