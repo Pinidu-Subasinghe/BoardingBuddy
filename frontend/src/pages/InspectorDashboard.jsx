@@ -2,9 +2,27 @@ import React, { useContext, useEffect, useState } from 'react';
 import { getBoardings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import DashboardShell from '../components/DashboardShell';
-import InspectorAssignedTasks from '../components/inspector/InspectorAssignedTasks';
-import InspectorReviewedTasks from '../components/inspector/InspectorReviewedTasks';
-import InspectorProfile from '../components/inspector/InspectorProfile';
+import InspectorInquiries from '../components/inspector/InspectorInquiries';
+
+const StarPicker = ({ value, onChange }) => {
+  const stars = [1, 2, 3, 4, 5];
+  return (
+    <div className="flex items-center gap-1">
+      {stars.map((s) => (
+        <button
+          type="button"
+          key={s}
+          onClick={() => onChange(s)}
+          className={`text-2xl transition-colors duration-150 hover:scale-110 active:scale-95 ${
+            s <= value ? 'text-yellow-400 drop-shadow-sm' : 'text-gray-300'
+          }`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const InspectorDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -57,8 +75,7 @@ const InspectorDashboard = () => {
 
   const menuItems = [
     { key: 'profile', label: 'My Profile' },
-    { key: 'assigned-tasks', label: 'Assigned Tasks' },
-    { key: 'reviewed-tasks', label: 'Reviewed Tasks' },
+    { key: 'inquiries', label: 'My Inquiries' },
   ];
 
   return (
@@ -69,15 +86,18 @@ const InspectorDashboard = () => {
       menuItems={menuItems}
       logout={logout}
     >
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-        </div>
-      ) : (
-        <>
-          {activeMenu === 'assigned-tasks' && (
-            <InspectorAssignedTasks boardings={boardings} setBoardings={setBoardings} />
-          )}
+      <div className="px-4 py-6 md:px-8">
+        {activeMenu === 'inquiries' ? (
+          <InspectorInquiries />
+        ) : loading ? (
+          <div className="flex justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+          </div>
+        ) : (
+          <>
+            <h2 className="mb-6 text-2xl font-bold text-gray-900 sm:text-3xl">
+              Assigned Boardings
+            </h2>
 
           {activeMenu === 'reviewed-tasks' && (
             <InspectorReviewedTasks boardings={boardings} user={user} />

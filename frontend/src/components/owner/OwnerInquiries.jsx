@@ -1,10 +1,10 @@
-import React from "react";
+import React from 'react';
+import MyInquiries from '../inquiries/MyInquiries';
 
 const OwnerInquiries = () => {
   return (
-    <div>
-      <h3 className="text-2xl font-bold mb-4">Inquiries</h3>
-      <p>Feature not implemented yet.</p>
+    <div className="pt-6">
+      <MyInquiries />
     </div>
   );
 };
