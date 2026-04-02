@@ -63,6 +63,8 @@ export const deleteBoarding = (id) => API.delete(`/boardings/${id}`);
 
 // Admin APIs
 export const assignInspector = (data) => API.put('/admin/assign-inspector', data);
+export const getAdminReviews = () => API.get('/admin/reviews');
+export const deleteAdminReview = (reviewId) => API.delete(`/admin/reviews/${reviewId}`);
 export const getAllUsers = () => API.get('/users');
 export const createUser = (data) => API.post('/users', data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
@@ -84,6 +86,12 @@ export const closeBooking = (id) => API.put(`/bookings/${id}/close`);
 // Ongoing stay actions
 export const extendStay = (id, newEndDate) => API.put(`/bookings/${id}/extend`, { newEndDate });
 export const endStay = (id) => API.put(`/bookings/${id}/end`);
+
+// Payment APIs
+export const createCardPayment = (data) => API.post('/payments/card', data);
+export const getMyPayments = () => API.get('/payments/my');
+export const getOwnerPayments = () => API.get('/payments/owner');
+export const getPaymentById = (id) => API.get(`/payments/${id}`);
 
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');

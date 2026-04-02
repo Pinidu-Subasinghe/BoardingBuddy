@@ -10,32 +10,43 @@ import {
 import { FaPen, FaTrashAlt } from 'react-icons/fa';
 import WriteReviewModal from './WriteReviewModal';
 import { formatDateTime } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 
 
 
 const StudentReviews = () => {
   const [reviewRequests, setReviewRequests] = useState([]);
+  const [loadingReviewRequests, setLoadingReviewRequests] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [currentBoardingId, setCurrentBoardingId] = useState(null);
   const [currentNotificationId, setCurrentNotificationId] = useState(null);
   const [editingReview, setEditingReview] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   const [posting, setPosting] = useState(false);
 
   // Fetch notifications
   const fetchNotifications = () => {
+    setLoadingReviewRequests(true);
     getNotifications().then(res => {
       const requests = (res.data || []).filter(n => n.type === 'review_request');
       setReviewRequests(requests);
-    }).catch(() => {});
+    }).catch(() => {
+      setReviewRequests([]);
+    }).finally(() => {
+      setLoadingReviewRequests(false);
+    });
   };
 
   // Fetch student reviews
   const fetchReviews = () => {
+    setLoadingReviews(true);
     getStudentReviews().then(res => {
       setReviews(res.data || []);
-    }).catch(() => setReviews([]));
+    }).catch(() => setReviews([])).finally(() => {
+      setLoadingReviews(false);
+    });
   };
 
   useEffect(() => {
@@ -129,7 +140,7 @@ const StudentReviews = () => {
     <div>
       <h3 className="text-2xl font-bold mb-4">My Reviews</h3>
 
-      {reviewRequests.length > 0 && (
+      {!loadingReviewRequests && reviewRequests.length > 0 && (
         <div className="mb-6">
           {reviewRequests.map((n, i) => (
             <div key={n.id || i} className="bg-blue-50 border border-blue-300 text-blue-900 rounded p-4 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -162,13 +173,15 @@ const StudentReviews = () => {
       />
 
       {/* Student reviews list */}
-      {reviews.length === 0 ? (
+      {loadingReviews ? (
+        <LoadingAnimation text="Loading reviews..." />
+      ) : reviews.length === 0 ? (
         <p>No reviews yet.</p>
       ) : (
         <div className="space-y-3 mt-6">
           {reviews.map(r => (
-            <div key={r._id} className="bg-white p-4 rounded shadow flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex-1">
+            <div key={r._id} className="bg-white p-4 rounded shadow flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1 min-w-0">
                 <h4 className="font-semibold mb-1">{r.boarding?.title || 'Boarding'}</h4>
                 <div className="flex flex-wrap gap-4 mb-2">
                   {r.ratings.map(rt => (
@@ -177,7 +190,11 @@ const StudentReviews = () => {
                     </span>
                   ))}
                 </div>
-                {r.comment && <p className="text-gray-700 text-sm">{r.comment}</p>}
+                {r.comment && (
+                  <p className="max-w-full whitespace-pre-wrap break-words text-gray-700 text-sm">
+                    {r.comment}
+                  </p>
+                )}
                 <div className="text-xs text-gray-400 mt-2">{formatDateTime(r.createdAt)}</div>
               </div>
               <div className="flex flex-col items-end min-w-[100px] mt-4 sm:mt-0">

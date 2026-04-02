@@ -1,9 +1,9 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { FaListUl, FaThLarge } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import { createInquiry, deleteInquiry, getBoardings, getMyInquiries } from '../../api/api';
 import InquiryCard from './InquiryCard';
 import InquiryFormModal from './InquiryFormModal';
+import LoadingAnimation from '../LoadingAnimation';
 
 const MyInquiries = () => {
   const { user } = useContext(AuthContext);
@@ -63,7 +63,7 @@ const MyInquiries = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <LoadingAnimation text="Loading My Inquiries..." />;
 
   const isOwner = role === 'owner';
   const ownerWarnings = isOwner
@@ -97,24 +97,20 @@ const MyInquiries = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                aria-label="List view"
-                title="List view"
-                className={`flex h-8 w-8 items-center justify-center rounded-md ${
+                className={`px-3 py-1 text-xs font-semibold rounded-md ${
                   viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                <FaListUl className="text-sm" />
+                List
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                aria-label="Grid view"
-                title="Grid view"
-                className={`flex h-8 w-8 items-center justify-center rounded-md ${
+                className={`px-3 py-1 text-xs font-semibold rounded-md ${
                   viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                <FaThLarge className="text-sm" />
+                Grid
               </button>
             </div>
           )}

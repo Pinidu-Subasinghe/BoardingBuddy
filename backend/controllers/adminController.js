@@ -1,4 +1,5 @@
 const Boarding = require('../models/Boarding');
+const Review = require('../models/Review');
 const { addNotification } = require('../utils/notification');
 
 // Admin: Assign inspector to a boarding
@@ -34,4 +35,34 @@ const assignInspector = async (req, res) => {
   }
 };
 
-module.exports = { assignInspector };
+// Admin: Get all student reviews for moderation (newest updates first)
+const getAllReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find({})
+      .populate('student', 'name')
+      .populate('boarding', 'title')
+      .sort({ updatedAt: -1, createdAt: -1 });
+
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Admin: Delete any review by id
+const deleteReviewByAdmin = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const review = await Review.findByIdAndDelete(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    res.json({ message: 'Review deleted' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+module.exports = { assignInspector, getAllReviews, deleteReviewByAdmin };

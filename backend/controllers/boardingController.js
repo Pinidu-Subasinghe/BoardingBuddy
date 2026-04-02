@@ -2,6 +2,21 @@ const Boarding = require("../models/Boarding");
 const User = require("../models/User");
 const { addNotification } = require("../utils/notification");
 
+const normalizeUniversities = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 // Owner: Add a new boarding
 const addBoarding = async (req, res) => {
   try {
@@ -24,7 +39,7 @@ const addBoarding = async (req, res) => {
       description,
       address,
       city,
-      nearestUniversities,
+      nearestUniversities: normalizeUniversities(nearestUniversities),
       location,
       monthlyRent,
       boardingType,
@@ -63,7 +78,12 @@ const updateBoarding = async (req, res) => {
     if (boarding.owner.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized" });
 
-    Object.assign(boarding, req.body);
+    const updates = { ...req.body };
+    if (Object.prototype.hasOwnProperty.call(updates, "nearestUniversities")) {
+      updates.nearestUniversities = normalizeUniversities(updates.nearestUniversities);
+    }
+
+    Object.assign(boarding, updates);
 
     // Ensure availableCapacity does not exceed totalCapacity
     if (boarding.availableCapacity > boarding.totalCapacity) {

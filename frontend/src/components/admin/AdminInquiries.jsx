@@ -9,6 +9,7 @@ import {
 } from '../../api/api';
 import { formatDate } from '../../utils/date';
 import InquiryStatusBadge from '../inquiries/InquiryStatusBadge';
+import LoadingAnimation from '../LoadingAnimation';
 
 const STATUS_OPTIONS = ['Pending', 'In Review', 'Resolved', 'Rejected'];
 
@@ -143,7 +144,7 @@ const AdminInquiries = () => {
 
   const hasInquiries = useMemo(() => inquiries.length > 0, [inquiries]);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <LoadingAnimation text="Loading Inquiries..." />;
 
   return (
     <div>

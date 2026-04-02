@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getNotifications, markNotificationsRead } from "../api/api";
 import { formatDateTime } from "../utils/date";
+import LoadingAnimation from "./LoadingAnimation";
 
 const NotificationBell = ({ user }) => {
   const [open, setOpen] = useState(false);
@@ -89,7 +90,7 @@ const NotificationBell = ({ user }) => {
           </div>
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
-              <div className="px-4 py-4 text-sm text-gray-500">Loading...</div>
+              <LoadingAnimation text="Loading..." containerClassName="py-4" />
             ) : notifications.length === 0 ? (
               <div className="px-4 py-4 text-sm text-gray-500">No notifications</div>
             ) : (
