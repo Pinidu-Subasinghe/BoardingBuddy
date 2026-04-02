@@ -5,6 +5,7 @@ const { sendTransactionalEmail } = require("../utils/email");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
+const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
 
 const buildProfileUpdatedEmail = (userName) => ({
   subject: "Your BoardingBuddy Profile Was Updated",
@@ -41,6 +42,10 @@ const getUserProfile = async (req, res) => {
       role: user.role,
       contactNumber: user.contactNumber,
       university: user.university,
+      dob: user.dob,
+      guardian: user.guardian,
+      paymentDetails: user.paymentDetails,
+      profileImage: user.profileImage,
     });
   } else {
     res.status(404).json({ message: "User not found" });
@@ -69,10 +74,60 @@ const updateUserProfile = async (req, res) => {
       user.contactNumber = normalizedContactNumber;
     }
 
+    if (req.body.profileImage !== undefined) {
+      user.profileImage = req.body.profileImage;
+    }
+
     user.name = req.body.name || user.name;
 
     if (user.role === "student") {
       user.university = req.body.university || user.university;
+
+      if (req.body.guardian) {
+        const guardianName = req.body.guardian.name;
+        const guardianPhone = req.body.guardian.phone;
+        const guardianType = req.body.guardian.type || user.guardian?.type || "Other";
+        const normalizedGuardianPhone =
+          typeof guardianPhone === "string" ? guardianPhone.replace(/\D/g, "") : "";
+
+        if (!guardianName || !normalizedGuardianPhone) {
+          return res.status(400).json({ message: "Guardian name and phone are required" });
+        }
+
+        if (!MOBILE_REGEX.test(normalizedGuardianPhone)) {
+          return res.status(400).json({ message: "Guardian phone must be exactly 10 digits" });
+        }
+
+        user.guardian = {
+          type: guardianType,
+          name: guardianName,
+          phone: normalizedGuardianPhone,
+        };
+      }
+    }
+
+    if (user.role === "owner" && req.body.paymentDetails) {
+      const accountNumber = req.body.paymentDetails.accountNumber;
+      const bankName = req.body.paymentDetails.bankName;
+      const branchName = req.body.paymentDetails.branchName;
+      const accountHolderName = req.body.paymentDetails.accountHolderName;
+      const normalizedAccountNumber =
+        typeof accountNumber === "string" ? accountNumber.replace(/\D/g, "") : "";
+
+      if (!normalizedAccountNumber || !bankName || !branchName || !accountHolderName) {
+        return res.status(400).json({ message: "Payment details are required" });
+      }
+
+      if (!ACCOUNT_NUMBER_REGEX.test(normalizedAccountNumber)) {
+        return res.status(400).json({ message: "Account number must be 12 to 16 digits" });
+      }
+
+      user.paymentDetails = {
+        accountNumber: normalizedAccountNumber,
+        bankName,
+        branchName,
+        accountHolderName,
+      };
     }
 
     if (req.body.password) {
@@ -97,6 +152,10 @@ const updateUserProfile = async (req, res) => {
       role: updatedUser.role,
       contactNumber: updatedUser.contactNumber,
       university: updatedUser.university,
+      dob: updatedUser.dob,
+      guardian: updatedUser.guardian,
+      paymentDetails: updatedUser.paymentDetails,
+      profileImage: updatedUser.profileImage,
       token: generateToken(updatedUser._id),
     });
   } else {
