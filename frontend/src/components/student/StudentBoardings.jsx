@@ -41,6 +41,7 @@ const StudentBoardings = () => {
   const [boardings, setBoardings] = useState([]);
   const [visitRequests, setVisitRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [cancelLoadingId, setCancelLoadingId] = useState(null);
   const [paidBookingIds, setPaidBookingIds] = useState(new Set());
   const [closeRequestLoadingId, setCloseRequestLoadingId] = useState(null);
@@ -48,32 +49,60 @@ const StudentBoardings = () => {
   const [nowTs, setNowTs] = useState(Date.now());
 
   const fetchBookingsAndPayments = async () => {
-    try {
-      const [bookingsRes, paymentsRes] = await Promise.all([getMyBookings(), getMyPayments()]);
-      const items = bookingsRes.data || [];
-      const payments = paymentsRes.data || [];
-      const visits = items.filter(b => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
-      // only show confirmed stays
-      const stays = items
-        .filter(b => b.status === 'student_stayed' && b.boarding)
-        .map(b => ({
-          ...b.boarding,
-          bookingId: b._id,
-          stayStart: b.stayStart,
-          stayEnd: b.stayEnd,
-          periodMonths: b.periodMonths
-        }));
+    setError('');
 
-      const paidIds = new Set(
-        payments
-          .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
-          .map((p) => (p?.booking?._id ? p.booking._id : p.booking))
-      );
-      setVisitRequests(visits);
-      setBoardings(stays);
-      setPaidBookingIds(paidIds);
+    try {
+      const [bookingsResult, paymentsResult] = await Promise.allSettled([
+        getMyBookings(),
+        getMyPayments(),
+      ]);
+
+      if (bookingsResult.status === 'fulfilled') {
+        const items = Array.isArray(bookingsResult.value?.data)
+          ? bookingsResult.value.data
+          : Array.isArray(bookingsResult.value?.data?.bookings)
+            ? bookingsResult.value.data.bookings
+            : [];
+
+        const visits = items.filter((b) => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
+        // only show confirmed stays
+        const stays = items
+          .filter((b) => b.status === 'student_stayed' && b.boarding)
+          .map((b) => ({
+            ...b.boarding,
+            bookingId: b._id,
+            stayStart: b.stayStart,
+            stayEnd: b.stayEnd,
+            periodMonths: b.periodMonths,
+          }));
+
+        setVisitRequests(visits);
+        setBoardings(stays);
+      } else {
+        console.error('Error fetching bookings:', bookingsResult.reason);
+        setError(bookingsResult.reason?.message || 'Unable to load booking data right now.');
+      }
+
+      if (paymentsResult.status === 'fulfilled') {
+        const payments = Array.isArray(paymentsResult.value?.data)
+          ? paymentsResult.value.data
+          : Array.isArray(paymentsResult.value?.data?.payments)
+            ? paymentsResult.value.data.payments
+            : [];
+
+        const paidIds = new Set(
+          payments
+            .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
+            .map((p) => String(p?.booking?._id || p?.booking))
+        );
+        setPaidBookingIds(paidIds);
+      } else {
+        console.error('Error fetching payments:', paymentsResult.reason);
+        setPaidBookingIds(new Set());
+      }
     } catch (err) {
       console.error('Error fetching boardings', err);
+      setError('Unable to load booking data right now.');
     } finally {
       setLoading(false);
     }
@@ -155,6 +184,11 @@ const StudentBoardings = () => {
     <div className="space-y-8">
       <h3 className="text-xl sm:text-2xl font-bold mb-4">Visit Requests</h3>
       <ContactOwnerModal open={contactModal.open} onClose={() => setContactModal({ open: false, owner: null })} owner={contactModal.owner} />
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       {visitRequests.length === 0 ? (
         <p className="text-gray-600">You have no visit requests.</p>
       ) : (
@@ -214,7 +248,7 @@ const StudentBoardings = () => {
               </div>
               {request.status === 'visit_completed' && (
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
-                  {paidBookingIds.has(request._id) ? (
+                  {paidBookingIds.has(String(request._id)) ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                       Payment completed. Waiting owner confirmation.
                     </span>
@@ -232,7 +266,7 @@ const StudentBoardings = () => {
                     </button>
                   )}
 
-                  {!paidBookingIds.has(request._id) && (
+                  {!paidBookingIds.has(String(request._id)) && (
                     <button
                       type="button"
                       onClick={() => handleCloseVisitRequest(request)}

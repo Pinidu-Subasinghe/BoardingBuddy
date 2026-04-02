@@ -9,31 +9,75 @@ const OwnerVisits = () => {
   const [visits, setVisits] = useState([]);
   const [paidBookingIds, setPaidBookingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const fetchVisits = async () => {
-    try {
-      const [bookingsRes, paymentsRes] = await Promise.all([getOwnerBookings(), getOwnerPayments()]);
-      setVisits(bookingsRes.data || []);
+  const fetchVisits = async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
 
-      const paidIds = new Set(
-        (paymentsRes.data || [])
-          .filter((p) => p?.status === 'succeeded' && p?.booking?._id)
-          .map((p) => p.booking._id)
-      );
-      setPaidBookingIds(paidIds);
+    setError('');
+
+    try {
+      const [bookingsResult, paymentsResult] = await Promise.allSettled([
+        getOwnerBookings(),
+        getOwnerPayments(),
+      ]);
+
+      if (bookingsResult.status === 'fulfilled') {
+        const bookingsData = Array.isArray(bookingsResult.value?.data)
+          ? bookingsResult.value.data
+          : Array.isArray(bookingsResult.value?.data?.bookings)
+            ? bookingsResult.value.data.bookings
+            : [];
+
+        setVisits(bookingsData);
+      } else {
+        console.error('Error fetching owner bookings:', bookingsResult.reason);
+        if (!silent) {
+          setVisits([]);
+        }
+        setError(bookingsResult.reason?.message || 'Unable to load owner visits right now.');
+      }
+
+      if (paymentsResult.status === 'fulfilled') {
+        const paymentsData = Array.isArray(paymentsResult.value?.data)
+          ? paymentsResult.value.data
+          : Array.isArray(paymentsResult.value?.data?.payments)
+            ? paymentsResult.value.data.payments
+            : [];
+
+        const paidIds = new Set(
+          paymentsData
+            .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
+            .map((p) => String(p?.booking?._id || p?.booking))
+        );
+        setPaidBookingIds(paidIds);
+      } else {
+        console.error('Error fetching owner payments:', paymentsResult.reason);
+        setPaidBookingIds(new Set());
+      }
     } catch (err) {
       console.error('Error fetching visits:', err);
+      setError('Unable to load owner visits right now.');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchVisits();
+    if (!user?._id) {
+      setLoading(false);
+      return undefined;
+    }
+
+    fetchVisits({ silent: false });
 
     const intervalId = setInterval(() => {
-      fetchVisits();
+      fetchVisits({ silent: true });
     }, 15000);
 
     return () => clearInterval(intervalId);
@@ -57,18 +101,18 @@ const OwnerVisits = () => {
   const statusOptions = [
     { value: 'all', label: 'All' },
     { value: 'requested', label: 'Requested' },
+    { value: 'notified', label: 'Notified' },
     { value: 'visit_completed', label: 'Visited / Payment' },
     { value: 'closed', label: 'Closed' },
     { value: 'left', label: 'Left' },
   ];
 
-  // Hide 'left' by default, only show if filtered
   const filteredVisits = visits
-    .filter(v => v.status !== 'student_stayed')
     .filter(v => {
-      if (statusFilter === 'all') return v.status !== 'left';
-      if (statusFilter === 'left') return v.status === 'left';
-      return v.status === statusFilter;
+      const normalizedStatus = String(v?.status || '').toLowerCase();
+      if (normalizedStatus === 'student_stayed') return false;
+      if (statusFilter === 'all') return true;
+      return normalizedStatus === statusFilter;
     })
     .sort((a, b) => {
       const dateA = new Date(a.requestedAt || a.createdAt || 0);
@@ -97,6 +141,12 @@ const OwnerVisits = () => {
             </select>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         {filteredVisits.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sm:p-10 text-center">
@@ -137,7 +187,10 @@ const OwnerVisits = () => {
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {filteredVisits.map((visit) => {
                     const isVisitCompleted = visit.status === 'visit_completed';
-                    const hasPayment = paidBookingIds.has(visit._id);
+                    const hasPayment = paidBookingIds.has(String(visit._id));
+                    const prettyStatus = String(visit.status || 'pending')
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (char) => char.toUpperCase());
 
                     return (
                     <tr 
@@ -169,7 +222,7 @@ const OwnerVisits = () => {
                           )
                         ) : (
                           <span className="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                            {visit.status || 'Pending'}
+                            {prettyStatus}
                           </span>
                         )}
                       </td>
