@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { cancelBooking, closeBooking, getMyBookings, getMyPayments } from '../../api/api';
 import { formatDate, formatDateTime } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
@@ -178,7 +179,7 @@ const StudentBoardings = () => {
     }
   };
 
-  if (loading) return <p className="px-2 sm:px-0">Loading...</p>;
+  if (loading) return <LoadingAnimation text="Loading My Boardings..." />;
 
   return (
     <div className="space-y-8">

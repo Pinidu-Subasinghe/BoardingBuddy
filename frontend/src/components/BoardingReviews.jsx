@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getReviewsForBoarding } from "../api/api";
 import { formatDate } from "../utils/date";
+import LoadingAnimation from "./LoadingAnimation";
 
 const BoardingReviews = ({
   boardingId,
@@ -33,7 +34,7 @@ const BoardingReviews = ({
     if (boardingId) fetchReviews();
   }, [boardingId]);
 
-  if (loading) return <div className="py-6 text-center">Loading reviews...</div>;
+  if (loading) return <LoadingAnimation text="Loading reviews..." />;
   if (!reviews.length) {
     return (
       <div className="py-6 text-center text-gray-500">No reviews yet.</div>

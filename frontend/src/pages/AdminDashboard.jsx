@@ -8,6 +8,7 @@ import AdminProfile from '../components/admin/AdminProfile';
 import AdminInquiries from '../components/admin/AdminInquiries';
 import AdminReviewModeration from '../components/admin/AdminReviewModeration';
 import DashboardShell from '../components/DashboardShell';
+import LoadingAnimation from '../components/LoadingAnimation';
 
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -139,7 +140,7 @@ const AdminDashboard = () => {
   return (
     <DashboardShell user={user} activeMenu={activeMenu} setActiveMenu={setActiveMenu} menuItems={menuItems} logout={logout}>
       {loading ? (
-        <p>Loading...</p>
+        <LoadingAnimation text="Loading admin data..." />
       ) : (
         <>
           {activeMenu === 'boarding-management' && (

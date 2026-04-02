@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { createCardPayment, getMyBookings, getMyPayments } from '../api/api';
+import LoadingAnimation from '../components/LoadingAnimation';
 
 const formatCardInput = (value) => {
   const digitsOnly = String(value || '').replace(/\D/g, '').slice(0, 16);
@@ -212,7 +213,7 @@ const StudentPaymentPage = () => {
   }
 
   if (loading) {
-    return <div className="py-16 flex items-center justify-center text-gray-700">Loading payment details...</div>;
+    return <LoadingAnimation text="Loading payment details..." containerClassName="py-16" />;
   }
 
   return (

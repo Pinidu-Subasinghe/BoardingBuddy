@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { getBoardings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import DashboardShell from '../components/DashboardShell';
+import LoadingAnimation from '../components/LoadingAnimation';
 import InspectorInquiries from '../components/inspector/InspectorInquiries';
 import InspectorAssignedTasks from '../components/inspector/InspectorAssignedTasks';
 import InspectorReviewedTasks from '../components/inspector/InspectorReviewedTasks';
@@ -77,9 +78,7 @@ const InspectorDashboard = () => {
         ) : activeMenu === 'inquiries' ? (
           <InspectorInquiries />
         ) : loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-          </div>
+          <LoadingAnimation text="Loading tasks..." />
         ) : activeMenu === 'reviewed-tasks' ? (
           <InspectorReviewedTasks boardings={boardings} user={user} />
         ) : (

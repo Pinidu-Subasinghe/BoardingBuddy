@@ -5,6 +5,7 @@ import { FiDownload, FiTrash2 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { deleteAdminReview, getAdminReviews } from '../../api/api';
 import { formatDateTime } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const toStars = (overallRating) => {
   if (typeof overallRating !== 'number') return 0;
@@ -242,9 +243,7 @@ const AdminReviewModeration = () => {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-          <p className="text-gray-600">Loading reviews...</p>
-        </div>
+        <LoadingAnimation text="Loading reviews..." />
       ) : sortedReviews.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
           <p className="text-lg text-gray-700 font-medium">No reviews available.</p>

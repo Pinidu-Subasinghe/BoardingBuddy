@@ -3,6 +3,7 @@ import { getBoardings, getInspectorRatings } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import BoardingCard from '../components/BoardingCard';
 import BrowseFilterPanel from '../components/BrowseFilterPanel';
+import LoadingAnimation from '../components/LoadingAnimation';
 import universities from '../data/universities.json';
 
 const Browse = () => {
@@ -198,10 +199,7 @@ const Browse = () => {
 
           <div>
             {loading && boardings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <p className="text-gray-600 text-lg font-medium">Loading boarding places...</p>
-              </div>
+              <LoadingAnimation text="Loading boarding places..." containerClassName="py-20" />
             ) : boardings.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 text-center">
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">No boarding places found</h3>

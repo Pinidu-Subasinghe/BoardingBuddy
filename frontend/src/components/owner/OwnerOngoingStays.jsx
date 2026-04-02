@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { getOwnerBookings, extendStay, endStay } from '../../api/api';
 import { formatDate } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const OwnerOngoingStays = () => {
   const { user } = useContext(AuthContext);
@@ -29,17 +30,7 @@ const OwnerOngoingStays = () => {
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="flex items-center gap-3 text-lg font-medium text-indigo-600">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          Loading ongoing stays...
-        </div>
-      </div>
-    );
+    return <LoadingAnimation text="Loading ongoing stays..." containerClassName="min-h-screen" />;
   }
 
   return (

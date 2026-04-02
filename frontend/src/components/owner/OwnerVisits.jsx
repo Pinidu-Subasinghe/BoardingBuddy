@@ -3,6 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { getOwnerBookings, markVisitComplete, confirmStay, closeBooking, getOwnerPayments } from '../../api/api';
 import Swal from 'sweetalert2';
 import { formatDateTime } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const OwnerVisits = () => {
   const { user } = useContext(AuthContext);
@@ -84,17 +85,7 @@ const OwnerVisits = () => {
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="flex items-center gap-3 text-lg font-medium text-indigo-600">
-          <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          Loading visits...
-        </div>
-      </div>
-    );
+    return <LoadingAnimation text="Loading visits..." containerClassName="min-h-screen" />;
   }
 
   // Filter and sort visits

@@ -3,6 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { createInquiry, deleteInquiry, getBoardings, getMyInquiries } from '../../api/api';
 import InquiryCard from './InquiryCard';
 import InquiryFormModal from './InquiryFormModal';
+import LoadingAnimation from '../LoadingAnimation';
 
 const MyInquiries = () => {
   const { user } = useContext(AuthContext);
@@ -62,7 +63,7 @@ const MyInquiries = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <LoadingAnimation text="Loading My Inquiries..." />;
 
   const isOwner = role === 'owner';
   const ownerWarnings = isOwner
