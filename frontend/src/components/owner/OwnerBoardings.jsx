@@ -23,7 +23,9 @@ const OwnerBoardings = () => {
     monthlyRent: '',
     boardingType: 'any',
     lifestyleTags: [],
-    totalCapacity: ''
+    totalCapacity: '',
+    coverImageFile: null,
+    imageFiles: []
   });
 
   useEffect(() => {
@@ -59,19 +61,23 @@ const OwnerBoardings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
-      title: form.title,
-      description: form.description,
-      address: form.address,
-      city: form.city,
-      nearestUniversities: form.nearestUniversities
-        ? form.nearestUniversities.split(',').map(s => s.trim()).filter(Boolean)
-        : [],
-      monthlyRent: Number(form.monthlyRent) || 0,
-      boardingType: form.boardingType,
-      lifestyleTags: form.lifestyleTags,
-      totalCapacity: Number(form.totalCapacity) || 0
-    };
+    const payload = new FormData();
+    payload.append('title', form.title);
+    payload.append('description', form.description || '');
+    payload.append('address', form.address);
+    payload.append('city', form.city);
+    payload.append('nearestUniversities', form.nearestUniversities || '');
+    payload.append('monthlyRent', String(Number(form.monthlyRent) || 0));
+    payload.append('boardingType', form.boardingType);
+    payload.append('lifestyleTags', JSON.stringify(form.lifestyleTags || []));
+    payload.append('totalCapacity', String(Number(form.totalCapacity) || 0));
+
+    if (form.coverImageFile) {
+      payload.append('coverImage', form.coverImageFile);
+    }
+    (form.imageFiles || []).forEach((file) => {
+      payload.append('images', file);
+    });
 
     try {
       const res = await apiAddBoarding(payload);
@@ -86,7 +92,9 @@ const OwnerBoardings = () => {
         monthlyRent: '',
         boardingType: 'any',
         lifestyleTags: [],
-        totalCapacity: ''
+        totalCapacity: '',
+        coverImageFile: null,
+        imageFiles: []
       });
     } catch (err) {
       console.error('Error creating boarding:', err);

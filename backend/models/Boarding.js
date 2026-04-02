@@ -17,6 +17,8 @@ const boardingSchema = new mongoose.Schema(
       lng: { type: Number },
     },
     monthlyRent: { type: Number, required: true },
+    coverImage: { type: String, default: "" },
+    images: [{ type: String }],
     boardingType: {
       type: String,
       enum: ["boys", "girls", "any"],
