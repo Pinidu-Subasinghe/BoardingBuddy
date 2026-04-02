@@ -88,6 +88,20 @@ const StudentProfile = () => {
   const handleProfileImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxSizeBytes = 2 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Image format is invalid. Use JPG, JPEG, PNG, or WEBP.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > maxSizeBytes) {
+      alert('Image size is exceeded. Please upload less than 2 MB.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === 'string' ? reader.result : '';
@@ -151,7 +165,8 @@ const StudentProfile = () => {
       alert('Profile updated');
       window.location.reload();
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Error updating profile';
+      const msg = err?.response?.data?.message
+        || 'Uploading an image should be JPG/JPEG/PNG/WEBP and keep it under 2 MB.';
       alert(msg);
     }
   };
