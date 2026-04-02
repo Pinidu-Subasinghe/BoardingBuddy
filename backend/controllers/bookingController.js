@@ -1,5 +1,6 @@
 const Booking = require('../models/Booking');
 const Boarding = require('../models/Boarding');
+const Payment = require('../models/Payment');
 const { addNotification } = require('../utils/notification');
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
@@ -148,6 +149,14 @@ const confirmStay = async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     if (booking.owner.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+    if (booking.status !== 'visit_completed') {
+      return res.status(400).json({ message: 'Stay can only be confirmed after visit completion' });
+    }
+
+    const payment = await Payment.findOne({ booking: booking._id, status: 'succeeded' });
+    if (!payment) {
+      return res.status(400).json({ message: 'Cannot confirm stay until first month payment is received' });
+    }
 
     const { startDate, periodMonths } = req.body;
     if (!startDate || !periodMonths) return res.status(400).json({ message: 'startDate and periodMonths required' });
@@ -197,15 +206,46 @@ const confirmStay = async (req, res) => {
   }
 };
 
-// Owner: close visit without stay
+// Owner/Student: close visit request without stay
 const closeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    if (booking.owner.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    const isOwner = booking.owner.toString() === req.user._id.toString();
+    const isStudent = booking.student.toString() === req.user._id.toString();
+    if (!isOwner && !isStudent) return res.status(403).json({ message: 'Not authorized' });
+
+    if (!['requested', 'notified', 'visit_completed'].includes(booking.status)) {
+      return res.status(400).json({ message: 'Only visit requests can be closed' });
+    }
 
     booking.status = 'closed';
+    booking.closedByRole = isStudent ? 'student' : 'owner';
     await booking.save();
+
+    try {
+      if (isStudent) {
+        addNotification({
+          userId: booking.owner,
+          message: `${req.user?.name || 'Student'} closed a visit request.`,
+          type: 'visit_closed',
+          data: { bookingId: booking._id.toString(), boardingId: booking.boarding.toString() }
+        });
+      }
+
+      if (isOwner) {
+        addNotification({
+          userId: booking.student,
+          message: 'Your visit request was closed by the owner.',
+          type: 'visit_closed',
+          data: { bookingId: booking._id.toString(), boardingId: booking.boarding.toString() }
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
+
     res.json(booking);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -247,12 +287,16 @@ const extendStay = async (req, res) => {
   }
 };
 
-// Owner: end stay (student leaves, update status, increment capacity)
+// Owner/Student: end stay (student leaves, update status, increment capacity)
 const endStay = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
-    if (booking.owner.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Not authorized' });
+
+    const isOwner = booking.owner.toString() === req.user._id.toString();
+    const isStudent = booking.student.toString() === req.user._id.toString();
+    if (!isOwner && !isStudent) return res.status(403).json({ message: 'Not authorized' });
+
     if (booking.status !== 'student_stayed') return res.status(400).json({ message: 'Can only end ongoing stays.' });
 
     booking.status = 'left';
@@ -265,14 +309,25 @@ const endStay = async (req, res) => {
       await boarding.save();
     }
 
-    // Notify student to review
+    // Notify student to review if owner closes the stay
     try {
-      addNotification({
-        userId: booking.student,
-        message: `Please review your stay at ${boarding?.title || 'the boarding'}`,
-        type: 'review_request',
-        data: { boardingId: boarding?._id ? boarding._id.toString() : null, bookingId: booking._id.toString() }
-      });
+      if (isOwner) {
+        addNotification({
+          userId: booking.student,
+          message: `Please review your stay at ${boarding?.title || 'the boarding'}`,
+          type: 'review_request',
+          data: { boardingId: boarding?._id ? boarding._id.toString() : null, bookingId: booking._id.toString() }
+        });
+      }
+
+      if (isStudent) {
+        addNotification({
+          userId: booking.owner,
+          message: `${req.user?.name || 'Student'} closed the stay at ${boarding?.title || 'your boarding'}.`,
+          type: 'stay_closed',
+          data: { boardingId: boarding?._id ? boarding._id.toString() : null, bookingId: booking._id.toString() }
+        });
+      }
     } catch (notifyErr) {
       // Log notification error but don't block main flow
       console.error('Notification error:', notifyErr);

@@ -21,7 +21,7 @@ router.put('/:id/confirm-stay', protect, authorize('owner'), confirmStay);
 
 // Ongoing stay actions
 router.put('/:id/extend', protect, authorize('owner'), require('../controllers/bookingController').extendStay);
-router.put('/:id/end', protect, authorize('owner'), require('../controllers/bookingController').endStay);
-router.put('/:id/close', protect, authorize('owner'), closeBooking);
+router.put('/:id/end', protect, authorize('owner', 'student'), require('../controllers/bookingController').endStay);
+router.put('/:id/close', protect, authorize('owner', 'student'), closeBooking);
 
 module.exports = router;

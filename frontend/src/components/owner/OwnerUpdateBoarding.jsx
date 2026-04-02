@@ -108,7 +108,9 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
       description: form.description,
       address: form.address,
       city: form.city,
-      nearestUniversities: form.nearestUniversities ? form.nearestUniversities.split(',').map(s => s.trim()) : [],
+      nearestUniversities: form.nearestUniversities
+        ? form.nearestUniversities.split(',').map(s => s.trim()).filter(Boolean)
+        : [],
       monthlyRent: Number(form.monthlyRent) || 0,
       boardingType: form.boardingType,
       lifestyleTags: form.lifestyleTags,

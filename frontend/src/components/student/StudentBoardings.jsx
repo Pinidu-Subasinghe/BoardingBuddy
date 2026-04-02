@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { cancelBooking, getMyBookings } from '../../api/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import Swal from 'sweetalert2';
+import { cancelBooking, closeBooking, getMyBookings, getMyPayments } from '../../api/api';
 import { formatDate, formatDateTime } from '../../utils/date';
+import LoadingAnimation from '../LoadingAnimation';
 
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
 const ContactOwnerModal = ({ open, onClose, owner }) => {
   if (!open || !owner) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 sm:px-6">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 sm:px-6">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Contact Owner</h3>
@@ -30,37 +33,91 @@ const ContactOwnerModal = ({ open, onClose, owner }) => {
           <button onClick={onClose} className="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">Close</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
 const StudentBoardings = () => {
+  const navigate = useNavigate();
   const [boardings, setBoardings] = useState([]);
   const [visitRequests, setVisitRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [cancelLoadingId, setCancelLoadingId] = useState(null);
+  const [paidBookingIds, setPaidBookingIds] = useState(new Set());
+  const [closeRequestLoadingId, setCloseRequestLoadingId] = useState(null);
   const [contactModal, setContactModal] = useState({ open: false, owner: null });
   const [nowTs, setNowTs] = useState(Date.now());
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await getMyBookings();
-        const items = res.data || [];
-        const visits = items.filter(b => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
+  const fetchBookingsAndPayments = async () => {
+    setError('');
+
+    try {
+      const [bookingsResult, paymentsResult] = await Promise.allSettled([
+        getMyBookings(),
+        getMyPayments(),
+      ]);
+
+      if (bookingsResult.status === 'fulfilled') {
+        const items = Array.isArray(bookingsResult.value?.data)
+          ? bookingsResult.value.data
+          : Array.isArray(bookingsResult.value?.data?.bookings)
+            ? bookingsResult.value.data.bookings
+            : [];
+
+        const visits = items.filter((b) => ['requested', 'notified', 'visit_completed'].includes(b.status) && b.boarding);
         // only show confirmed stays
         const stays = items
-          .filter(b => b.status === 'student_stayed' && b.boarding)
-          .map(b => ({ ...b.boarding, stayStart: b.stayStart, stayEnd: b.stayEnd }));
+          .filter((b) => b.status === 'student_stayed' && b.boarding)
+          .map((b) => ({
+            ...b.boarding,
+            bookingId: b._id,
+            stayStart: b.stayStart,
+            stayEnd: b.stayEnd,
+            periodMonths: b.periodMonths,
+          }));
+
         setVisitRequests(visits);
         setBoardings(stays);
-      } catch (err) {
-        console.error('Error fetching boardings', err);
-      } finally {
-        setLoading(false);
+      } else {
+        console.error('Error fetching bookings:', bookingsResult.reason);
+        setError(bookingsResult.reason?.message || 'Unable to load booking data right now.');
       }
-    };
-    fetch();
+
+      if (paymentsResult.status === 'fulfilled') {
+        const payments = Array.isArray(paymentsResult.value?.data)
+          ? paymentsResult.value.data
+          : Array.isArray(paymentsResult.value?.data?.payments)
+            ? paymentsResult.value.data.payments
+            : [];
+
+        const paidIds = new Set(
+          payments
+            .filter((p) => p?.status === 'succeeded' && (p?.booking?._id || p?.booking))
+            .map((p) => String(p?.booking?._id || p?.booking))
+        );
+        setPaidBookingIds(paidIds);
+      } else {
+        console.error('Error fetching payments:', paymentsResult.reason);
+        setPaidBookingIds(new Set());
+      }
+    } catch (err) {
+      console.error('Error fetching boardings', err);
+      setError('Unable to load booking data right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookingsAndPayments();
+
+    const intervalId = setInterval(() => {
+      fetchBookingsAndPayments();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -89,30 +146,101 @@ const StudentBoardings = () => {
   const handleCancelRequest = async (request) => {
     const { canCancel } = getCancelMeta(request);
     if (!canCancel) {
-      window.alert('Cancellation window expired. You can cancel only within 30 minutes.');
+      const timeoutResult = await Swal.fire({
+        title: '30-minute cancellation expired',
+        text: 'Do you want to close this request now?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, close request',
+        cancelButtonText: 'Keep request',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+      });
+
+      if (!timeoutResult.isConfirmed) return;
+
+      await handleCloseVisitRequest(request, { skipConfirm: true });
       return;
     }
 
-    const ok = window.confirm('Cancel this visit request? This will permanently delete the request record.');
-    if (!ok) return;
+    const confirmResult = await Swal.fire({
+      title: 'Cancel this visit request?',
+      text: 'This will permanently delete the request record.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      cancelButtonText: 'Keep request',
+      confirmButtonColor: '#dc2626',
+      reverseButtons: true,
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
       setCancelLoadingId(request._id);
       await cancelBooking(request._id);
       setVisitRequests((prev) => prev.filter((r) => r._id !== request._id));
     } catch (err) {
-      window.alert(err?.message || 'Failed to cancel request');
+      await Swal.fire({
+        title: 'Unable to cancel request',
+        text: err?.message || 'Failed to cancel request',
+        icon: 'error',
+      });
     } finally {
       setCancelLoadingId(null);
     }
   };
 
-  if (loading) return <p className="px-2 sm:px-0">Loading...</p>;
+  const handleCloseVisitRequest = async (request, options = {}) => {
+    const { skipConfirm = false } = options;
+
+    if (!skipConfirm) {
+      const confirmResult = await Swal.fire({
+        title: 'Close this request?',
+        text: 'This request will be removed from your list.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, close request',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+      });
+
+      if (!confirmResult.isConfirmed) return;
+    }
+
+    try {
+      setCloseRequestLoadingId(request._id);
+      await closeBooking(request._id);
+      setVisitRequests((prev) => prev.filter((r) => r._id !== request._id));
+      await Swal.fire({
+        title: 'Request closed',
+        text: 'Request closed successfully.',
+        icon: 'success',
+        draggable: true,
+      });
+    } catch (err) {
+      await Swal.fire({
+        title: 'Unable to close request',
+        text: err?.message || 'Failed to close request',
+        icon: 'error',
+      });
+    } finally {
+      setCloseRequestLoadingId(null);
+    }
+  };
+
+  if (loading) return <LoadingAnimation text="Loading My Boardings..." />;
 
   return (
     <div className="space-y-8">
       <h3 className="text-xl sm:text-2xl font-bold mb-4">Visit Requests</h3>
       <ContactOwnerModal open={contactModal.open} onClose={() => setContactModal({ open: false, owner: null })} owner={contactModal.owner} />
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       {visitRequests.length === 0 ? (
         <p className="text-gray-600">You have no visit requests.</p>
       ) : (
@@ -121,19 +249,38 @@ const StudentBoardings = () => {
             <div key={request._id} className="bg-white p-4 sm:p-5 rounded-lg shadow">
               {(() => {
                 const { canCancel, remainingSeconds } = getCancelMeta(request);
-                if (!canCancel) return null;
+                if (canCancel) {
+                  return (
+                    <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                      <div className="text-xs font-semibold text-red-500">
+                        {`You can cancel this request in ${formatRemaining(remainingSeconds)}`}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelRequest(request)}
+                        disabled={cancelLoadingId === request._id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {cancelLoadingId === request._id ? 'Cancelling...' : 'Cancel Request'}
+                      </button>
+                    </div>
+                  );
+                }
+
+                if (!['requested', 'notified'].includes(request.status)) return null;
+
                 return (
                   <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                    <div className="text-xs font-semibold text-red-500">
-                      {`You can cancel this request in ${formatRemaining(remainingSeconds)}`}
+                    <div className="text-xs font-semibold text-red-600">
+                      30-minute cancellation window expired.
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCancelRequest(request)}
-                      disabled={cancelLoadingId === request._id}
+                      onClick={() => handleCloseVisitRequest(request)}
+                      disabled={closeRequestLoadingId === request._id}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {cancelLoadingId === request._id ? 'Cancelling...' : 'Cancel Request'}
+                      {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
                     </button>
                   </div>
                 );
@@ -170,6 +317,38 @@ const StudentBoardings = () => {
                   <span className="font-medium">Contact:</span> {request.boarding?.owner?.contactNumber || 'N/A'}
                 </div>
               </div>
+              {request.status === 'visit_completed' && (
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
+                  {paidBookingIds.has(String(request._id)) ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Payment completed. Waiting owner confirmation.
+                    </span>
+                  ) : boardings.length > 0 ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                      You already have an active stay. Pay after leaving current boarding.
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/student-payment/${request._id}`)}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+                    >
+                      Pay and Confirm Stay
+                    </button>
+                  )}
+
+                  {!paidBookingIds.has(String(request._id)) && (
+                    <button
+                      type="button"
+                      onClick={() => handleCloseVisitRequest(request)}
+                      disabled={closeRequestLoadingId === request._id}
+                      className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+                    >
+                      {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

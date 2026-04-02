@@ -15,6 +15,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import FAQ from './pages/FAQ';
 import StudentDashboard from './pages/StudentDashboard';
+import StudentPaymentPage from './pages/StudentPaymentPage';
 import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import InspectorDashboard from './pages/InspectorDashboard';
@@ -123,6 +124,7 @@ function App() {
             <Route path="/faq" element={<FAQ />} />
 
             <Route path="/student-dashboard" element={<StudentDashboard />} />
+            <Route path="/student-payment/:bookingId" element={<StudentPaymentPage />} />
             <Route path="/owner-dashboard" element={<OwnerDashboard />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/inspector-dashboard" element={<InspectorDashboard />} />
