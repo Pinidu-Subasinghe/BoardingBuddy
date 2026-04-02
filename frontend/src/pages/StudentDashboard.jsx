@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import StudentProfile from '../components/student/StudentProfile';
 import StudentBoardings from '../components/student/StudentBoardings';
+import StudentPayments from '../components/student/StudentPayments';
 import StudentReviews from '../components/student/StudentReviews';
 import StudentInquiries from '../components/student/StudentInquiries';
 import DashboardShell from '../components/DashboardShell';
@@ -52,6 +53,8 @@ const StudentDashboard = () => {
         return <StudentProfile />;
       case 'my-boardings':
         return <StudentBoardings />;
+      case 'my-payments':
+        return <StudentPayments />;
       case 'my-reviews':
         return <StudentReviews />;
       case 'inquiries':
@@ -64,6 +67,7 @@ const StudentDashboard = () => {
   const menuItems = [
     { key: 'profile', label: 'Profile' },
     { key: 'my-boardings', label: 'My Boardings' },
+    { key: 'my-payments', label: 'My Payments' },
     { key: 'my-reviews', label: 'My Reviews' },
     { key: 'inquiries', label: 'My Inquiries' },
   ];
