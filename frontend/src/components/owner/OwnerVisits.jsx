@@ -84,6 +84,69 @@ const OwnerVisits = () => {
     return () => clearInterval(intervalId);
   }, [user]);
 
+  const handleMarkVisitDone = async (visitId) => {
+    const confirmResult = await Swal.fire({
+      title: 'Mark visit as done?',
+      text: 'This will move the request to visited and payment pending.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, mark done',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      await markVisitComplete(visitId);
+      setVisits((prev) => prev.map(v => v._id === visitId ? { ...v, status: 'visit_completed' } : v));
+      await Swal.fire({
+        title: 'Marked as visit completed',
+        icon: 'success',
+        draggable: true,
+      });
+    } catch (err) {
+      console.error(err);
+      await Swal.fire({
+        title: 'Error',
+        text: err?.response?.data?.message || err?.message || 'Failed to mark visit as completed',
+        icon: 'error',
+      });
+    }
+  };
+
+  const handleCloseRequest = async (visitId) => {
+    const confirmResult = await Swal.fire({
+      title: 'Close this request?',
+      text: 'This request will be removed from your active visits list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, close request',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+      reverseButtons: true,
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      await closeBooking(visitId);
+      setVisits((prev) => prev.filter(v => v._id !== visitId));
+      await Swal.fire({
+        title: 'Request closed',
+        icon: 'success',
+        draggable: true,
+      });
+    } catch (err) {
+      console.error(err);
+      await Swal.fire({
+        title: 'Error',
+        text: err?.response?.data?.message || err?.message || 'Failed to close request',
+        icon: 'error',
+      });
+    }
+  };
+
   if (loading) {
     return <LoadingAnimation text="Loading visits..." containerClassName="min-h-screen" />;
   }
@@ -222,28 +285,13 @@ const OwnerVisits = () => {
                           {visit.status === 'requested' && (
                             <>
                               <button
-                                onClick={async () => {
-                                  try {
-                                    await markVisitComplete(visit._id);
-                                    setVisits((prev) => prev.map(v => v._id === visit._id ? { ...v, status: 'visit_completed' } : v));
-                                    await Swal.fire({
-                                      title: 'Marked as visit completed',
-                                      icon: 'success',
-                                      draggable: true
-                                    });
-                                  } catch (err) { console.error(err); Swal.fire({ title: 'Error', icon: 'error' }); }
-                                }}
+                                onClick={() => handleMarkVisitDone(visit._id)}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                               >
                                 Mark Visit Done
                               </button>
                               <button
-                                onClick={async () => {
-                                  try {
-                                    await closeBooking(visit._id);
-                                    setVisits((prev) => prev.filter(v => v._id !== visit._id));
-                                  } catch (e) { console.error(e); }
-                                }}
+                                onClick={() => handleCloseRequest(visit._id)}
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                               >
                                 Close Request
@@ -298,12 +346,7 @@ const OwnerVisits = () => {
                               )}
                               {!hasPayment && (
                                 <button
-                                  onClick={async () => {
-                                    try {
-                                      await closeBooking(visit._id);
-                                      setVisits((prev) => prev.filter(v => v._id !== visit._id));
-                                    } catch (e) { console.error(e); }
-                                  }}
+                                  onClick={() => handleCloseRequest(visit._id)}
                                   className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold disabled:opacity-60"
                                 >
                                   Close Request

@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { createCardPayment, getMyBookings, getMyPayments } from '../api/api';
+import Swal from 'sweetalert2';
 import LoadingAnimation from '../components/LoadingAnimation';
 
 const formatCardInput = (value) => {
@@ -9,7 +10,30 @@ const formatCardInput = (value) => {
   return digitsOnly.replace(/(.{4})/g, '$1 ').trim();
 };
 
-const validatePaymentForm = (form, currentYear) => {
+const formatExpiryInput = (value) => {
+  const digitsOnly = String(value || '').replace(/\D/g, '').slice(0, 4);
+  if (digitsOnly.length <= 2) return digitsOnly;
+  return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+};
+
+const parseExpiry = (value) => {
+  const digitsOnly = String(value || '').replace(/\D/g, '').slice(0, 4);
+  if (digitsOnly.length !== 4) return null;
+
+  const month = Number(digitsOnly.slice(0, 2));
+  const yearTwoDigits = Number(digitsOnly.slice(2, 4));
+  const yearFull = 2000 + yearTwoDigits;
+
+  return {
+    month,
+    monthText: digitsOnly.slice(0, 2),
+    yearTwoDigits,
+    yearFull,
+    yearFullText: String(yearFull),
+  };
+};
+
+const validatePaymentForm = (form, currentYear, currentMonth) => {
   const errors = {};
 
   const name = String(form.cardholderName || '').trim();
@@ -28,20 +52,21 @@ const validatePaymentForm = (form, currentYear) => {
     errors.cardNumber = 'Card number must be exactly 16 digits.';
   }
 
-  const month = String(form.expiryMonth || '').trim();
-  if (!month) {
-    errors.expiryMonth = 'Expiry month is required.';
-  } else if (!/^\d{1,2}$/.test(month) || Number(month) < 1 || Number(month) > 12) {
-    errors.expiryMonth = 'Month must be between 1 and 12.';
-  }
-
-  const year = String(form.expiryYear || '').trim();
-  if (!year) {
-    errors.expiryYear = 'Expiry year is required.';
-  } else if (!/^\d{4}$/.test(year)) {
-    errors.expiryYear = 'Year must be 4 digits.';
-  } else if (Number(year) < currentYear) {
-    errors.expiryYear = `Year cannot be less than ${currentYear}.`;
+  const expiry = String(form.expiry || '').trim();
+  if (!expiry) {
+    errors.expiry = 'Expiry is required.';
+  } else {
+    const parsedExpiry = parseExpiry(expiry);
+    if (!parsedExpiry) {
+      errors.expiry = 'Use MM/YY format (example: 12/26).';
+    } else if (parsedExpiry.month < 1 || parsedExpiry.month > 12) {
+      errors.expiry = 'Month must be between 01 and 12.';
+    } else if (
+      parsedExpiry.yearFull < currentYear ||
+      (parsedExpiry.yearFull === currentYear && parsedExpiry.month < currentMonth)
+    ) {
+      errors.expiry = 'Card is expired. Use a valid expiry date.';
+    }
   }
 
   const cvv = String(form.cvv || '').trim();
@@ -107,8 +132,7 @@ const StudentPaymentPage = () => {
   const [form, setForm] = useState({
     cardholderName: '',
     cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
+    expiry: '',
     cvv: ''
   });
 
@@ -150,8 +174,14 @@ const StudentPaymentPage = () => {
   }, [bookingId]);
 
   const amount = useMemo(() => Number(booking?.boarding?.monthlyRent || 0), [booking]);
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
-  const validationErrors = useMemo(() => validatePaymentForm(form, currentYear), [form, currentYear]);
+  const { currentYear, currentMonth } = useMemo(() => {
+    const now = new Date();
+    return { currentYear: now.getFullYear(), currentMonth: now.getMonth() + 1 };
+  }, []);
+  const validationErrors = useMemo(
+    () => validatePaymentForm(form, currentYear, currentMonth),
+    [form, currentYear, currentMonth]
+  );
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const isBlocked = hasActiveStay || alreadyPaid || !booking || booking?.status !== 'visit_completed' || !!error;
   const cardBrand = useMemo(() => detectCardBrand(form.cardNumber), [form.cardNumber]);
@@ -168,34 +198,77 @@ const StudentPaymentPage = () => {
   }, [form.cardholderName]);
 
   const previewExpiry = useMemo(() => {
-    const mm = form.expiryMonth ? form.expiryMonth.padStart(2, '0') : 'MM';
-    const yy = form.expiryYear ? form.expiryYear.slice(-2) : 'YY';
-    return `${mm}/${yy}`;
-  }, [form.expiryMonth, form.expiryYear]);
+    const digitsOnly = String(form.expiry || '').replace(/\D/g, '').slice(0, 4);
+    if (!digitsOnly) return 'MM/YY';
+    if (digitsOnly.length <= 2) return `${digitsOnly.padEnd(2, 'M')}/YY`;
+    return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2).padEnd(2, 'Y')}`;
+  }, [form.expiry]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setSubmitAttempted(true);
 
-    if (isBlocked || hasValidationErrors) return;
+    if (hasValidationErrors) {
+      const parsedExpiry = parseExpiry(form.expiry);
+      const hasExpiredCard =
+        !!parsedExpiry &&
+        parsedExpiry.month >= 1 &&
+        parsedExpiry.month <= 12 &&
+        (parsedExpiry.yearFull < currentYear ||
+          (parsedExpiry.yearFull === currentYear && parsedExpiry.month < currentMonth));
+
+      if (hasExpiredCard) {
+        await Swal.fire({
+          title: 'Card expired',
+          text: 'Please use a card with a valid expiry date.',
+          icon: 'warning',
+          confirmButtonColor: '#f59e0b',
+        });
+      }
+
+      return;
+    }
+
+    if (isBlocked) return;
 
     try {
+      const parsedExpiry = parseExpiry(form.expiry);
+      if (!parsedExpiry) {
+        await Swal.fire({
+          title: 'Invalid expiry',
+          text: 'Please enter expiry in MM/YY format.',
+          icon: 'warning',
+          confirmButtonColor: '#f59e0b',
+        });
+        return;
+      }
+
       setSubmitting(true);
       await createCardPayment({
         bookingId,
         amount,
         cardholderName: form.cardholderName.trim(),
         cardNumber: form.cardNumber.replace(/\D/g, ''),
-        expiryMonth: form.expiryMonth.trim(),
-        expiryYear: form.expiryYear.trim(),
+        expiryMonth: parsedExpiry.monthText,
+        expiryYear: parsedExpiry.yearFullText,
         cvv: form.cvv.trim()
       });
 
-      window.alert('Payment completed. The owner can now confirm your stay.');
+      await Swal.fire({
+        title: 'Payment completed',
+        text: 'The owner can now confirm your stay.',
+        icon: 'success',
+        confirmButtonColor: '#16a34a',
+        draggable: true,
+      });
       navigate('/student-dashboard', { state: { activeMenu: 'my-boardings' } });
     } catch (err) {
-      window.alert(err?.message || 'Payment failed');
+      await Swal.fire({
+        title: 'Payment failed',
+        text: err?.response?.data?.message || err?.message || 'Payment failed',
+        icon: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -358,43 +431,24 @@ const StudentPaymentPage = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Month</label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Expiry (MM/YY)</label>
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={form.expiryMonth}
-                    onChange={(e) => setForm((prev) => ({ ...prev, expiryMonth: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
-                    placeholder="MM"
+                    value={form.expiry}
+                    onChange={(e) => setForm((prev) => ({ ...prev, expiry: formatExpiryInput(e.target.value) }))}
+                    placeholder="MM/YY"
                     className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                      submitAttempted && validationErrors.expiryMonth ? 'border-red-400' : 'border-slate-300'
+                      submitAttempted && validationErrors.expiry ? 'border-red-400' : 'border-slate-300'
                     }`}
                     required
-                    maxLength={2}
+                    maxLength={5}
                     disabled={isBlocked || submitting}
                   />
-                  {submitAttempted && validationErrors.expiryMonth && (
-                    <p className="mt-1 text-xs text-red-600">{validationErrors.expiryMonth}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Year</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.expiryYear}
-                    onChange={(e) => setForm((prev) => ({ ...prev, expiryYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                    placeholder="YYYY"
-                    className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                      submitAttempted && validationErrors.expiryYear ? 'border-red-400' : 'border-slate-300'
-                    }`}
-                    required
-                    maxLength={4}
-                    disabled={isBlocked || submitting}
-                  />
-                  {submitAttempted && validationErrors.expiryYear && (
-                    <p className="mt-1 text-xs text-red-600">{validationErrors.expiryYear}</p>
+                  {submitAttempted && validationErrors.expiry && (
+                    <p className="mt-1 text-xs text-red-600">{validationErrors.expiry}</p>
                   )}
                 </div>
                 <div>

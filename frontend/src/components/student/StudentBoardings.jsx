@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import Swal from 'sweetalert2';
 import { cancelBooking, closeBooking, getMyBookings, getMyPayments } from '../../api/api';
 import { formatDate, formatDateTime } from '../../utils/date';
 import LoadingAnimation from '../LoadingAnimation';
@@ -145,35 +146,85 @@ const StudentBoardings = () => {
   const handleCancelRequest = async (request) => {
     const { canCancel } = getCancelMeta(request);
     if (!canCancel) {
-      window.alert('Cancellation window expired. You can cancel only within 30 minutes.');
+      const timeoutResult = await Swal.fire({
+        title: '30-minute cancellation expired',
+        text: 'Do you want to close this request now?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, close request',
+        cancelButtonText: 'Keep request',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+      });
+
+      if (!timeoutResult.isConfirmed) return;
+
+      await handleCloseVisitRequest(request, { skipConfirm: true });
       return;
     }
 
-    const ok = window.confirm('Cancel this visit request? This will permanently delete the request record.');
-    if (!ok) return;
+    const confirmResult = await Swal.fire({
+      title: 'Cancel this visit request?',
+      text: 'This will permanently delete the request record.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      cancelButtonText: 'Keep request',
+      confirmButtonColor: '#dc2626',
+      reverseButtons: true,
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
       setCancelLoadingId(request._id);
       await cancelBooking(request._id);
       setVisitRequests((prev) => prev.filter((r) => r._id !== request._id));
     } catch (err) {
-      window.alert(err?.message || 'Failed to cancel request');
+      await Swal.fire({
+        title: 'Unable to cancel request',
+        text: err?.message || 'Failed to cancel request',
+        icon: 'error',
+      });
     } finally {
       setCancelLoadingId(null);
     }
   };
 
-  const handleCloseVisitRequest = async (request) => {
-    const ok = window.confirm('Are you sure you want to close this request?');
-    if (!ok) return;
+  const handleCloseVisitRequest = async (request, options = {}) => {
+    const { skipConfirm = false } = options;
+
+    if (!skipConfirm) {
+      const confirmResult = await Swal.fire({
+        title: 'Close this request?',
+        text: 'This request will be removed from your list.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, close request',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+      });
+
+      if (!confirmResult.isConfirmed) return;
+    }
 
     try {
       setCloseRequestLoadingId(request._id);
       await closeBooking(request._id);
       setVisitRequests((prev) => prev.filter((r) => r._id !== request._id));
-      window.alert('Request closed successfully.');
+      await Swal.fire({
+        title: 'Request closed',
+        text: 'Request closed successfully.',
+        icon: 'success',
+        draggable: true,
+      });
     } catch (err) {
-      window.alert(err?.message || 'Failed to close request');
+      await Swal.fire({
+        title: 'Unable to close request',
+        text: err?.message || 'Failed to close request',
+        icon: 'error',
+      });
     } finally {
       setCloseRequestLoadingId(null);
     }
@@ -198,19 +249,38 @@ const StudentBoardings = () => {
             <div key={request._id} className="bg-white p-4 sm:p-5 rounded-lg shadow">
               {(() => {
                 const { canCancel, remainingSeconds } = getCancelMeta(request);
-                if (!canCancel) return null;
+                if (canCancel) {
+                  return (
+                    <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                      <div className="text-xs font-semibold text-red-500">
+                        {`You can cancel this request in ${formatRemaining(remainingSeconds)}`}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelRequest(request)}
+                        disabled={cancelLoadingId === request._id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {cancelLoadingId === request._id ? 'Cancelling...' : 'Cancel Request'}
+                      </button>
+                    </div>
+                  );
+                }
+
+                if (!['requested', 'notified'].includes(request.status)) return null;
+
                 return (
                   <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                    <div className="text-xs font-semibold text-red-500">
-                      {`You can cancel this request in ${formatRemaining(remainingSeconds)}`}
+                    <div className="text-xs font-semibold text-red-600">
+                      30-minute cancellation window expired.
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCancelRequest(request)}
-                      disabled={cancelLoadingId === request._id}
+                      onClick={() => handleCloseVisitRequest(request)}
+                      disabled={closeRequestLoadingId === request._id}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {cancelLoadingId === request._id ? 'Cancelling...' : 'Cancel Request'}
+                      {closeRequestLoadingId === request._id ? 'Closing...' : 'Close Request'}
                     </button>
                   </div>
                 );
