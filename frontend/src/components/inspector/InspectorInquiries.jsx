@@ -1,8 +1,8 @@
 import React from 'react';
 import MyInquiries from '../inquiries/MyInquiries';
 
-const StudentInquiries = () => {
+const InspectorInquiries = () => {
   return <MyInquiries />;
 };
 
-export default StudentInquiries;
+export default InspectorInquiries;

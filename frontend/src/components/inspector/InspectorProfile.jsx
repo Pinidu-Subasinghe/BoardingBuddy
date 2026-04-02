@@ -14,7 +14,7 @@ function getCurrentUser() {
   }
 }
 
-const AdminProfile = () => {
+const InspectorProfile = () => {
   const { user: contextUser } = useContext(AuthContext);
   const user = getCurrentUser() || contextUser;
 
@@ -73,16 +73,17 @@ const AdminProfile = () => {
     const maxSizeBytes = 2 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
-      alert('Only JPEG, PNG, or WEBP images are allowed');
+      alert('Image format is invalid. Use JPG, JPEG, PNG, or WEBP.');
       e.target.value = '';
       return;
     }
 
     if (file.size > maxSizeBytes) {
-      alert('Image size should be less than 2 MB');
+      alert('Image size is exceeded. Please upload less than 2 MB.');
       e.target.value = '';
       return;
     }
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === 'string' ? reader.result : '';
@@ -117,9 +118,7 @@ const AdminProfile = () => {
 
     try {
       const payload = {
-        name: fields.name,
-        email: fields.email,
-        contactNumber: fields.contactNumber,
+        ...fields,
         profileImage,
       };
 
@@ -130,7 +129,8 @@ const AdminProfile = () => {
       alert('Profile updated');
       window.location.reload();
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Unable to update profile';
+      const msg = err?.response?.data?.message
+        || 'Uploading an image should be JPG/JPEG/PNG/WEBP and keep it under 2 MB.';
       alert(msg);
     }
   };
@@ -229,8 +229,7 @@ const AdminProfile = () => {
                     {!editMode[key] ? (
                       <button
                         onClick={() => toggleEdit(key)}
-                        className="p-2 text-gray-500 hover:text-indigo-600
-                                 opacity-70 group-hover:opacity-100 transition-opacity duration-150"
+                        className="p-2 text-gray-500 hover:text-indigo-600 opacity-70 group-hover:opacity-100 transition-opacity duration-150"
                         title="Edit"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -321,4 +320,4 @@ const AdminProfile = () => {
   );
 };
 
-export default AdminProfile;
+export default InspectorProfile;
