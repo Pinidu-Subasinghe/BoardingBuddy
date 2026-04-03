@@ -2,12 +2,24 @@ const Boarding = require("../models/Boarding");
 const User = require("../models/User");
 const { addNotification } = require("../utils/notification");
 
-const normalizeUniversities = (value) => {
+const normalizeStringArray = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || "").trim()).filter(Boolean);
   }
 
   if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch (err) {
+      // Not a JSON array; fallback to comma-separated parsing.
+    }
+
     return value
       .split(",")
       .map((item) => item.trim())
@@ -15,6 +27,34 @@ const normalizeUniversities = (value) => {
   }
 
   return [];
+};
+
+const normalizeLocation = (value) => {
+  if (!value) return undefined;
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch (err) {
+      return undefined;
+    }
+  }
+
+  return undefined;
+};
+
+const getImageFiles = (req) => {
+  const coverFiles = req.files?.coverImage || [];
+  const otherFiles = req.files?.images || [];
+  return {
+    coverFile: coverFiles[0],
+    otherFiles,
+  };
 };
 
 // Owner: Add a new boarding
@@ -33,17 +73,33 @@ const addBoarding = async (req, res) => {
       totalCapacity,
     } = req.body;
 
+    const { coverFile, otherFiles } = getImageFiles(req);
+    if (!coverFile) {
+      return res
+        .status(400)
+        .json({ message: "Cover image is required (JPG, JPEG or PNG)" });
+    }
+    if (otherFiles.length > 5) {
+      return res
+        .status(400)
+        .json({ message: "You can upload at most 5 additional images" });
+    }
+
+    const images = otherFiles.map((file) => file.path);
+
     const boarding = await Boarding.create({
       owner: req.user._id,
       title,
       description,
       address,
       city,
-      nearestUniversities: normalizeUniversities(nearestUniversities),
-      location,
+      nearestUniversities: normalizeStringArray(nearestUniversities),
+      location: normalizeLocation(location),
       monthlyRent,
+      coverImage: coverFile.path,
+      images,
       boardingType,
-      lifestyleTags,
+      lifestyleTags: normalizeStringArray(lifestyleTags),
       totalCapacity,
       availableCapacity: totalCapacity,
       status: "pending",
@@ -79,9 +135,37 @@ const updateBoarding = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
 
     const updates = { ...req.body };
-    if (Object.prototype.hasOwnProperty.call(updates, "nearestUniversities")) {
-      updates.nearestUniversities = normalizeUniversities(updates.nearestUniversities);
+
+    if (Object.prototype.hasOwnProperty.call(updates, "location")) {
+      updates.location = normalizeLocation(updates.location);
     }
+    if (Object.prototype.hasOwnProperty.call(updates, "nearestUniversities")) {
+      updates.nearestUniversities = normalizeStringArray(updates.nearestUniversities);
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, "lifestyleTags")) {
+      updates.lifestyleTags = normalizeStringArray(updates.lifestyleTags);
+    }
+
+    delete updates.coverImage;
+    delete updates.images;
+
+    const { coverFile, otherFiles } = getImageFiles(req);
+    const nextCoverImage = coverFile ? coverFile.path : boarding.coverImage;
+    const nextImages = otherFiles.length > 0 ? otherFiles.map((file) => file.path) : boarding.images || [];
+
+    if (!nextCoverImage) {
+      return res
+        .status(400)
+        .json({ message: "Cover image is required (JPG, JPEG or PNG)" });
+    }
+    if (nextImages.length > 5) {
+      return res
+        .status(400)
+        .json({ message: "You can upload at most 5 additional images" });
+    }
+
+    updates.coverImage = nextCoverImage;
+    updates.images = nextImages;
 
     Object.assign(boarding, updates);
 

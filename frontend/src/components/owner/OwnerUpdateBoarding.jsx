@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import universities from '../../data/universities.json';
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+
+const isAllowedImageType = (file) => {
+  const type = String(file?.type || '').toLowerCase();
+  return ALLOWED_IMAGE_TYPES.includes(type);
+};
+
 const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
   const [form, setForm] = useState({
     title: '',
@@ -11,7 +18,11 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
     monthlyRent: '',
     boardingType: 'any',
     lifestyleTags: [],
-    totalCapacity: ''
+    totalCapacity: '',
+    existingCoverImage: '',
+    existingImages: [],
+    coverImageFile: null,
+    imageFiles: []
   });
 
   useEffect(() => {
@@ -25,7 +36,11 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
       monthlyRent: boarding.monthlyRent || '',
       boardingType: boarding.boardingType || 'any',
       lifestyleTags: boarding.lifestyleTags || [],
-      totalCapacity: boarding.totalCapacity || ''
+      totalCapacity: boarding.totalCapacity || '',
+      existingCoverImage: boarding.coverImage || '',
+      existingImages: boarding.images || [],
+      coverImageFile: null,
+      imageFiles: []
     });
   }, [boarding]);
 
@@ -87,6 +102,22 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
       else if (!/^[A-Za-z0-9\s.,'()-]*$/.test(values.description)) e.description = 'Description contains invalid characters';
     }
 
+    const hasCoverImage = Boolean(values.coverImageFile || values.existingCoverImage);
+    if (!hasCoverImage) {
+      e.coverImageFile = 'Cover image is required';
+    } else if (values.coverImageFile && !isAllowedImageType(values.coverImageFile)) {
+      e.coverImageFile = 'Cover image must be JPG, JPEG, or PNG';
+    }
+
+    const nextAdditionalImages = (values.imageFiles && values.imageFiles.length > 0)
+      ? values.imageFiles
+      : (values.existingImages || []);
+    if (nextAdditionalImages.length > 5) {
+      e.imageFiles = 'You can upload at most 5 additional images';
+    } else if ((values.imageFiles || []).some((file) => !isAllowedImageType(file))) {
+      e.imageFiles = 'Additional images must be JPG, JPEG, or PNG';
+    }
+
     return e;
   };
 
@@ -103,22 +134,27 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
 
   const handleSubmit = (ev) => {
     ev.preventDefault();
-    const payload = {
-      title: form.title,
-      description: form.description,
-      address: form.address,
-      city: form.city,
-      nearestUniversities: form.nearestUniversities
-        ? form.nearestUniversities.split(',').map(s => s.trim()).filter(Boolean)
-        : [],
-      monthlyRent: Number(form.monthlyRent) || 0,
-      boardingType: form.boardingType,
-      lifestyleTags: form.lifestyleTags,
-      totalCapacity: Number(form.totalCapacity) || 0
-    };
     const v = validate(form);
     setErrors(v);
     if (Object.keys(v).length === 0) {
+      const payload = new FormData();
+      payload.append('title', form.title);
+      payload.append('description', form.description || '');
+      payload.append('address', form.address);
+      payload.append('city', form.city);
+      payload.append('nearestUniversities', form.nearestUniversities || '');
+      payload.append('monthlyRent', String(Number(form.monthlyRent) || 0));
+      payload.append('boardingType', form.boardingType);
+      payload.append('lifestyleTags', JSON.stringify(form.lifestyleTags || []));
+      payload.append('totalCapacity', String(Number(form.totalCapacity) || 0));
+
+      if (form.coverImageFile) {
+        payload.append('coverImage', form.coverImageFile);
+      }
+      if (form.imageFiles && form.imageFiles.length > 0) {
+        form.imageFiles.forEach((file) => payload.append('images', file));
+      }
+
       onSubmit(boarding._id, payload);
     }
   };
@@ -267,6 +303,67 @@ const OwnerUpdateBoarding = ({ boarding, onClose, onSubmit }) => {
                 </div>
                 <textarea id="description" name="description" value={form.description} onChange={(e) => { const value = e.target.value.length <= 150 ? e.target.value : e.target.value.slice(0,150); handleChange({ target: { name: 'description', value } }); clearFieldError('description', value); }} placeholder="Description" rows={4} className="sm:col-span-2 w-full px-3 py-2 border rounded" />
                 {errors.description && <p className="text-rose-600 text-sm mt-1">{errors.description}</p>}
+            </div>
+
+            <div className="sm:col-span-2 border rounded p-3 space-y-4">
+              <p className="font-semibold">Boarding Images</p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Cover Image * (JPG, JPEG, PNG)</label>
+                {form.existingCoverImage && !form.coverImageFile && (
+                  <img
+                    src={form.existingCoverImage}
+                    alt="Current cover"
+                    className="w-full sm:w-56 h-32 object-cover rounded border"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    setForm((prev) => ({ ...prev, coverImageFile: file }));
+                    clearFieldError('coverImageFile', file);
+                  }}
+                  className="w-full px-3 py-2 border rounded"
+                />
+                {form.coverImageFile && (
+                  <p className="text-xs text-gray-600 truncate">New cover: {form.coverImageFile.name}</p>
+                )}
+                {errors.coverImageFile && <p className="text-rose-600 text-sm mt-1">{errors.coverImageFile}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Additional Images (up to 5)</label>
+                {(!form.imageFiles || form.imageFiles.length === 0) && (form.existingImages || []).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {form.existingImages.slice(0, 5).map((img, idx) => (
+                      <img
+                        key={`${img}-${idx}`}
+                        src={img}
+                        alt={`Current boarding ${idx + 1}`}
+                        className="w-full h-20 object-cover rounded border"
+                      />
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setForm((prev) => ({ ...prev, imageFiles: files }));
+                    clearFieldError('imageFiles', files);
+                  }}
+                  className="w-full px-3 py-2 border rounded"
+                />
+                <p className="text-xs text-gray-500">Selecting files here replaces existing additional images.</p>
+                {form.imageFiles && form.imageFiles.length > 0 && (
+                  <p className="text-xs text-gray-600">{form.imageFiles.length} new additional image{form.imageFiles.length > 1 ? 's' : ''} selected</p>
+                )}
+                {errors.imageFiles && <p className="text-rose-600 text-sm mt-1">{errors.imageFiles}</p>}
+              </div>
             </div>
 
             <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
