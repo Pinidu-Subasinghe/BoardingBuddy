@@ -4,6 +4,10 @@ import { formatDate } from "../utils/date";
 
 const BoardingCard = ({ boarding }) => {
   const b = boarding || {};
+  const coverImage =
+    b.coverImage ||
+    (Array.isArray(b.images) && b.images.length > 0 ? b.images[0] : null) ||
+    "https://via.placeholder.com/400x300?text=No+Image";
   const pct = Math.round(b._rating?.overallPercentage || 0);
   const pctCls =
     pct >= 75
@@ -39,7 +43,7 @@ const BoardingCard = ({ boarding }) => {
       {/* Image – noticeably shorter */}
       <div className="relative aspect-[5/3] sm:aspect-[16/9] overflow-hidden">
         <img
-          src="https://picsum.photos/400/300"
+          src={coverImage}
           alt={b.title || "Boarding place"}
           className="
             w-full h-full object-cover
@@ -67,7 +71,7 @@ const BoardingCard = ({ boarding }) => {
             >
               <path d="M10 10a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 0114 0H3z" />
             </svg>
-            <span>Availale: </span>
+            <span>Available: </span>
             {b.availableCapacity ?? b.totalCapacity}
           </span>
         </div>
