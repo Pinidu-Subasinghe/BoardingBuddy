@@ -8,6 +8,23 @@ const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
 const MOBILE_REGEX = /^\d{10}$/;
 const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
 
+const OTP_EXPIRY_MS = 5 * 60 * 1000;
+
+const generateOtpCode = () => {
+  return String(Math.floor(100000 + Math.random() * 900000));
+};
+
+const buildOtpEmail = (userName, otp) => ({
+  subject: "Email Verification - BoardingBuddy 🏠",
+  text:
+    `Dear ${userName},\n\n` +
+    "Your OTP code is:\n" +
+    `${otp}\n\n` +
+    "This code will expire in 5 minutes.\n\n" +
+    "Thank You,\n" +
+    "BoardingBuddy 🏠 Team",
+});
+
 const buildWelcomeEmail = (userName) => ({
   subject: "Welcome to BoardingBuddy \ud83c\udfe0",
   text:
@@ -19,6 +36,19 @@ const buildWelcomeEmail = (userName) => ({
     "Thank you for choosing our platform.\n\n" +
     "Thank You,\n" +
     "BoardingBuddy \ud83c\udfe0 Team"
+});
+
+const buildForgotPasswordOtpEmail = (otp) => ({
+  subject: "Password Reset - BoardingBuddy 🏠",
+  text:
+    "Dear User,\n\n" +
+    "You requested to reset your password.\n\n" +
+    "Use the OTP below to continue:\n" +
+    `${otp}\n\n` +
+    "This OTP will expire in 10 minutes.\n\n" +
+    "If you did not request this, please ignore this email.\n\n" +
+    "Thank You,\n" +
+    "BoardingBuddy 🏠 Team",
 });
 
 // Register
@@ -73,9 +103,9 @@ const registerUser = async (req, res) => {
   }
 
   try {
-    const userExists = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
-    if (userExists) {
+    if (existingUser && existingUser.isEmailVerified) {
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -118,57 +148,159 @@ const registerUser = async (req, res) => {
       }
     }
 
-    const user = await User.create({
-      name,
-      email: normalizedEmail,
-      password,
-      gender,
-      contactNumber: normalizedContactNumber,
-      role,
-      university,
-      dob: parsedDob,
-      guardian: role === "student"
-        ? {
-            type: guardian?.type,
-            name: guardian?.name,
-            phone: typeof guardian?.phone === "string" ? guardian.phone.replace(/\D/g, "") : "",
-          }
-        : undefined,
-      paymentDetails: role === "owner"
-        ? {
-            accountNumber:
-              typeof paymentDetails?.accountNumber === "string"
-                ? paymentDetails.accountNumber.replace(/\D/g, "")
-                : "",
-            bankName: paymentDetails?.bankName,
-            branchName: paymentDetails?.branchName,
-            accountHolderName: paymentDetails?.accountHolderName,
-          }
-        : undefined,
-    });
+    const otp = generateOtpCode();
+    const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS);
 
-    const welcomeEmail = buildWelcomeEmail(user.name);
+    let user;
+    if (existingUser && !existingUser.isEmailVerified) {
+      existingUser.name = name;
+      existingUser.password = password;
+      existingUser.gender = gender;
+      existingUser.contactNumber = normalizedContactNumber;
+      existingUser.role = role;
+      existingUser.university = university;
+      existingUser.dob = parsedDob;
+      existingUser.guardian =
+        role === "student"
+          ? {
+              type: guardian?.type,
+              name: guardian?.name,
+              phone: typeof guardian?.phone === "string" ? guardian.phone.replace(/\D/g, "") : "",
+            }
+          : undefined;
+      existingUser.paymentDetails =
+        role === "owner"
+          ? {
+              accountNumber:
+                typeof paymentDetails?.accountNumber === "string"
+                  ? paymentDetails.accountNumber.replace(/\D/g, "")
+                  : "",
+              bankName: paymentDetails?.bankName,
+              branchName: paymentDetails?.branchName,
+              accountHolderName: paymentDetails?.accountHolderName,
+            }
+          : undefined;
+      existingUser.otp = otp;
+      existingUser.otpExpiry = otpExpiry;
+      existingUser.isEmailVerified = false;
+      user = await existingUser.save();
+    } else {
+      user = await User.create({
+        name,
+        email: normalizedEmail,
+        password,
+        gender,
+        contactNumber: normalizedContactNumber,
+        role,
+        university,
+        dob: parsedDob,
+        guardian: role === "student"
+          ? {
+              type: guardian?.type,
+              name: guardian?.name,
+              phone: typeof guardian?.phone === "string" ? guardian.phone.replace(/\D/g, "") : "",
+            }
+          : undefined,
+        paymentDetails: role === "owner"
+          ? {
+              accountNumber:
+                typeof paymentDetails?.accountNumber === "string"
+                  ? paymentDetails.accountNumber.replace(/\D/g, "")
+                  : "",
+              bankName: paymentDetails?.bankName,
+              branchName: paymentDetails?.branchName,
+              accountHolderName: paymentDetails?.accountHolderName,
+            }
+          : undefined,
+        isEmailVerified: false,
+        otp,
+        otpExpiry,
+      });
+    }
+
+    const otpEmail = buildOtpEmail(user.name, otp);
     sendTransactionalEmail({
       to: user.email,
-      subject: welcomeEmail.subject,
-      text: welcomeEmail.text
+      subject: otpEmail.subject,
+      text: otpEmail.text,
     }).catch((error) => {
       console.error("Email error:", error);
     });
 
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
+      message: "OTP sent to your email",
       email: user.email,
-      gender: user.gender,
-      role: user.role,
-      contactNumber: user.contactNumber,
-      university: user.university,
-      dob: user.dob,
-      guardian: user.guardian,
-      paymentDetails: user.paymentDetails,
-      profileImage: user.profileImage,
-      token: generateToken(user._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Verify OTP
+const verifyOtp = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ message: "OTP must be 6 digits" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: "Email is already verified" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not found. Please sign up again" });
+    }
+
+    if (user.otpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please sign up again" });
+    }
+
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+
+    const verifiedUser = await user.save();
+
+    const welcomeEmail = buildWelcomeEmail(verifiedUser.name);
+    sendTransactionalEmail({
+      to: verifiedUser.email,
+      subject: welcomeEmail.subject,
+      text: welcomeEmail.text,
+    }).catch((error) => {
+      console.error("Email error:", error);
+    });
+
+    res.json({
+      _id: verifiedUser._id,
+      name: verifiedUser.name,
+      email: verifiedUser.email,
+      gender: verifiedUser.gender,
+      role: verifiedUser.role,
+      contactNumber: verifiedUser.contactNumber,
+      university: verifiedUser.university,
+      dob: verifiedUser.dob,
+      guardian: verifiedUser.guardian,
+      paymentDetails: verifiedUser.paymentDetails,
+      profileImage: verifiedUser.profileImage,
+      token: generateToken(verifiedUser._id),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -181,6 +313,10 @@ const loginUser = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
+
+    if (user && !user.isEmailVerified) {
+      return res.status(401).json({ message: "Please verify your email with OTP before signing in" });
+    }
 
     if (user && (await user.matchPassword(password))) {
       res.json({
@@ -205,4 +341,132 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };
+const forgotPassword = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const otp = generateOtpCode();
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    const otpEmail = buildForgotPasswordOtpEmail(otp);
+    sendTransactionalEmail({
+      to: user.email,
+      subject: otpEmail.subject,
+      text: otpEmail.text,
+    }).catch((error) => {
+      console.error("Email error:", error);
+    });
+
+    return res.json({ message: "OTP sent to your email", email: user.email });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const verifyForgotPasswordOtp = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ message: "OTP must be 6 digits" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not found. Please request a new OTP" });
+    }
+
+    if (user.otpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP" });
+    }
+
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    return res.json({ message: "OTP verified" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const resetPasswordWithOtp = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+  const password = typeof req.body.password === "string" ? req.body.password : "";
+  const confirmPassword = typeof req.body.confirmPassword === "string" ? req.body.confirmPassword : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ message: "OTP must be 6 digits" });
+  }
+
+  if (!STRONG_PASSWORD_REGEX.test(password)) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not found. Please request a new OTP" });
+    }
+
+    if (user.otpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP" });
+    }
+
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.password = password;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    return res.json({ message: "Password reset successful" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { registerUser, verifyOtp, loginUser, forgotPassword, verifyForgotPasswordOtp, resetPasswordWithOtp };

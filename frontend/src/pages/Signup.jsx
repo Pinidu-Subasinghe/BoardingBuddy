@@ -1,7 +1,7 @@
 import React from 'react';
 import AuthForm from '../components/AuthForm';
 
-const LoginPage = () => {
+const Signup = () => {
   return (
     <section className="min-h-[calc(100vh-6.5rem)] bg-[#eef1f7] px-4 py-4 sm:px-6 sm:py-6 lg:flex lg:items-center">
       <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl lg:max-w-6xl">
@@ -12,18 +12,19 @@ const LoginPage = () => {
             <div className="absolute -right-4 -bottom-16 h-[340px] w-[340px] rounded-full border border-white/10" />
 
             <div className="relative z-10 max-w-xl text-center lg:text-left">
+
               <h1 className="text-5xl font-extrabold tracking-tight leading-[1.08]">
-                Hello<br />BoardingBuddy!
+                Join<br />BoardingBuddy!
               </h1>
 
               <p className="mt-6 max-w-lg text-lg text-white/90 leading-relaxed">
-                Find safe, verified boarding places near your university and manage everything in one place.
+                Create your account in minutes and discover student-friendly boarding options with confidence.
               </p>
             </div>
           </div>
 
           <div className="bg-[#f8f9fc] p-5 sm:p-8 lg:p-10 flex items-center justify-center">
-            <AuthForm initialMode="login" />
+            <AuthForm initialMode="signup" />
           </div>
         </div>
       </div>
@@ -31,4 +32,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default Signup;

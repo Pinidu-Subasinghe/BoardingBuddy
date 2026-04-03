@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import { FaHeart } from "react-icons/fa";
+import { FiHeart } from "react-icons/fi";
+import { addToWishlist, getMyWishlist, removeFromWishlist } from "../api/api";
 import RequestVisitModal from "./RequestVisitModal";
 
 const BoardingDetailsCard = ({
@@ -13,6 +16,8 @@ const BoardingDetailsCard = ({
   onNotify,
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const galleryImages = useMemo(() => {
     const items = [];
@@ -39,6 +44,44 @@ const BoardingDetailsCard = ({
   useEffect(() => {
     setActiveImageIndex(0);
   }, [boarding?._id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkWishlistStatus = async () => {
+      if (user?.role !== "student" || !boarding?._id) {
+        if (isMounted) setIsWishlisted(false);
+        return;
+      }
+
+      try {
+        const res = await getMyWishlist();
+        const items = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.wishlist)
+            ? res.data.wishlist
+            : [];
+
+        const exists = items.some(
+          (item) => String(item?.boarding?._id || item?.boarding) === String(boarding._id),
+        );
+
+        if (isMounted) {
+          setIsWishlisted(exists);
+        }
+      } catch {
+        if (isMounted) {
+          setIsWishlisted(false);
+        }
+      }
+    };
+
+    checkWishlistStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.role, boarding?._id]);
 
   if (!boarding) return null;
 
@@ -95,15 +138,77 @@ const BoardingDetailsCard = ({
     }
   };
 
+  const handleToggleWishlist = async () => {
+    if (user?.role !== "student" || !boarding?._id || wishlistLoading) return;
+
+    try {
+      setWishlistLoading(true);
+
+      if (isWishlisted) {
+        await removeFromWishlist(boarding._id);
+        setIsWishlisted(false);
+        Swal.fire({
+          title: "Removed from wishlist",
+          icon: "success",
+          draggable: true,
+          timer: 1400,
+          showConfirmButton: false,
+        });
+      } else {
+        await addToWishlist(boarding._id);
+        setIsWishlisted(true);
+        Swal.fire({
+          title: "Added to wishlist",
+          icon: "success",
+          draggable: true,
+          timer: 1400,
+          showConfirmButton: false,
+        });
+      }
+    } catch (err) {
+      Swal.fire({
+        title: "Wishlist update failed",
+        text: err?.message || "Unable to update wishlist",
+        icon: "error",
+        draggable: true,
+      });
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   return (
     <div className="h-full p-6 bg-white rounded-xl shadow-lg">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-3 sm:space-y-4">
           {/* Row 1: Title */}
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
-            {boarding.title}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+              {boarding.title}
+            </h2>
+
+            {user?.role === "student" && (
+              <button
+                type="button"
+                onClick={handleToggleWishlist}
+                disabled={wishlistLoading}
+                aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                  isWishlisted
+                    ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"
+                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-rose-500"
+                } ${wishlistLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {isWishlisted ? (
+                  <FaHeart className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <FiHeart className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            )}
+          </div>
           {/* Row 2: Location + Status */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Location pill */}
