@@ -49,6 +49,9 @@ API.interceptors.response.use(
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);
 export const verifyRegistrationOtp = (data) => API.post('/auth/verify-otp', data);
+export const forgotPasswordRequest = (data) => API.post('/auth/forgot-password', data);
+export const verifyForgotPasswordOtpRequest = (data) => API.post('/auth/forgot-password/verify-otp', data);
+export const resetPasswordWithOtpRequest = (data) => API.post('/auth/forgot-password/reset', data);
 
 // User profile
 export const getProfile = () => API.get('/users/profile');
