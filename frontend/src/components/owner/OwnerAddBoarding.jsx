@@ -14,6 +14,13 @@ const LIFESTYLE_OPTIONS = [
   'Meals Provided'
 ];
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+
+const isAllowedImageType = (file) => {
+  const type = String(file?.type || '').toLowerCase();
+  return ALLOWED_IMAGE_TYPES.includes(type);
+};
+
 const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, handleSubmit }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [errors, setErrors] = useState({});
@@ -78,6 +85,21 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
     if (values.description) {
       if (values.description.length > 150) e.description = 'Description must be at most 150 characters';
       else if (!/^[A-Za-z0-9\s.,'()-]*$/.test(values.description)) e.description = 'Description contains invalid characters';
+    }
+
+    // Cover image (required)
+    if (!values.coverImageFile) {
+      e.coverImageFile = 'Cover image is required';
+    } else if (!isAllowedImageType(values.coverImageFile)) {
+      e.coverImageFile = 'Cover image must be JPG, JPEG, or PNG';
+    }
+
+    // Additional images (optional, max 5)
+    const additionalImages = values.imageFiles || [];
+    if (additionalImages.length > 5) {
+      e.imageFiles = 'You can upload at most 5 additional images';
+    } else if (additionalImages.some((file) => !isAllowedImageType(file))) {
+      e.imageFiles = 'Additional images must be JPG, JPEG, or PNG';
     }
 
     return e;
@@ -380,6 +402,63 @@ const OwnerAddBoarding = ({ form, setForm, handleChange, handleCheckboxChange, h
           "
         />
         {errors.description && <p className="text-rose-600 text-sm mt-1">{errors.description}</p>}
+      </div>
+
+      <div className="sm:col-span-2 border border-gray-200/60 rounded-xl p-5 bg-gray-50/40 space-y-4">
+        <p className="font-semibold text-gray-700 text-lg">Boarding Images</p>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Cover Image * (JPG, JPEG, PNG)</label>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            onChange={(ev) => {
+              const file = ev.target.files && ev.target.files[0] ? ev.target.files[0] : null;
+              setForm((prev) => ({ ...prev, coverImageFile: file }));
+              clearFieldError('coverImageFile', file);
+            }}
+            className="
+              w-full px-4 py-3
+              bg-white
+              border border-gray-300 rounded-xl
+              text-sm text-gray-700
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400
+              transition-all duration-200
+            "
+          />
+          {form.coverImageFile && (
+            <p className="text-xs text-gray-600 mt-1 truncate">Selected: {form.coverImageFile.name}</p>
+          )}
+          {errors.coverImageFile && <p className="text-rose-600 text-sm mt-1">{errors.coverImageFile}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-700">Additional Images (up to 5)</label>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            multiple
+            onChange={(ev) => {
+              const files = Array.from(ev.target.files || []);
+              setForm((prev) => ({ ...prev, imageFiles: files }));
+              clearFieldError('imageFiles', files);
+            }}
+            className="
+              w-full px-4 py-3
+              bg-white
+              border border-gray-300 rounded-xl
+              text-sm text-gray-700
+              focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400
+              transition-all duration-200
+            "
+          />
+          {form.imageFiles && form.imageFiles.length > 0 && (
+            <p className="text-xs text-gray-600 mt-1">
+              {form.imageFiles.length} additional image{form.imageFiles.length > 1 ? 's' : ''} selected
+            </p>
+          )}
+          {errors.imageFiles && <p className="text-rose-600 text-sm mt-1">{errors.imageFiles}</p>}
+        </div>
       </div>
     </div>
 

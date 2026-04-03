@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import RequestVisitModal from "./RequestVisitModal";
 
@@ -12,7 +12,47 @@ const BoardingDetailsCard = ({
   onCloseVisit,
   onNotify,
 }) => {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const galleryImages = useMemo(() => {
+    const items = [];
+
+    if (boarding?.coverImage) {
+      items.push(boarding.coverImage);
+    }
+
+    if (Array.isArray(boarding?.images)) {
+      boarding.images.forEach((img) => {
+        if (img && img !== boarding?.coverImage) {
+          items.push(img);
+        }
+      });
+    }
+
+    if (items.length === 0) {
+      items.push("https://via.placeholder.com/680x340?text=No+Image");
+    }
+
+    return items.slice(0, 6);
+  }, [boarding?.coverImage, boarding?.images]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [boarding?._id]);
+
   if (!boarding) return null;
+
+  const goPrevImage = () => {
+    setActiveImageIndex((prev) =>
+      prev === 0 ? galleryImages.length - 1 : prev - 1,
+    );
+  };
+
+  const goNextImage = () => {
+    setActiveImageIndex((prev) =>
+      prev === galleryImages.length - 1 ? 0 : prev + 1,
+    );
+  };
 
   const handleNotify = async (payload = {}) => {
     const { contactNumber, message } = payload || {};
@@ -209,13 +249,39 @@ const BoardingDetailsCard = ({
 
         {/* Right Column: Images */}
         <div className="space-y-3">
-          {/* Main sample image */}
-          <div className="w-full h-48 md:h-60 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="w-full h-48 md:h-60 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center relative">
             <img
-              src="https://www.hlc.org.uk/wp-content/uploads/2025/10/HLCBoysDorm01-680x340.jpg"
-              alt="Sample Boarding"
+              src={galleryImages[activeImageIndex]}
+              alt={`${boarding.title} ${activeImageIndex + 1}`}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = "https://via.placeholder.com/680x340?text=No+Image";
+              }}
             />
+
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={goPrevImage}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/55 text-white hover:bg-black/70 transition"
+                  aria-label="Previous image"
+                >
+                  {'<'}
+                </button>
+                <button
+                  type="button"
+                  onClick={goNextImage}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/55 text-white hover:bg-black/70 transition"
+                  aria-label="Next image"
+                >
+                  {'>'}
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/50 text-white text-xs">
+                  {activeImageIndex + 1}/{galleryImages.length}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
