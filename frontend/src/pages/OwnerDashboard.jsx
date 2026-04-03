@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import OwnerProfile from '../components/owner/OwnerProfile';
 import OwnerBoardings from '../components/owner/OwnerBoardings';
+import OwnerPayments from '../components/owner/OwnerPayments';
 import OwnerVisits from '../components/owner/OwnerVisits';
 import OwnerAnalytics from '../components/owner/OwnerAnalytics';
 import OwnerOngoingStays from '../components/owner/OwnerOngoingStays';
@@ -46,6 +47,8 @@ const OwnerDashboard = () => {
         return <OwnerProfile />;
       case 'boardings':
         return <OwnerBoardings />;
+      case 'receivedPayments':
+        return <OwnerPayments />;
       case 'visits':
         return <OwnerVisits />;
       case 'ongoing':
@@ -64,6 +67,7 @@ const OwnerDashboard = () => {
     { key: 'boardings', label: 'My Boardings' },
     { key: 'visits', label: 'My Visits' },
     { key: 'ongoing', label: 'Ongoing stays' },
+    { key: 'receivedPayments', label: 'Received Payments' },
     { key: 'analytics', label: 'Analytics' },
     { key: 'inquiries', label: 'Inquiries' },
   ];
