@@ -73,6 +73,9 @@ export const getAllUsers = () => API.get('/users');
 export const createUser = (data) => API.post('/users', data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
+export const getAdminAnalyticsSummary = (params) => API.get('/admin/analytics/summary', { params });
+export const getAdminAnalyticsDetails = (params) => API.get('/admin/analytics/details', { params });
+export const getAdminAnalyticsReportData = (params) => API.get('/admin/analytics/report-data', { params });
 
 // Inspector APIs
 export const rateBoarding = (data) => API.post('/inspector/rate', data);
