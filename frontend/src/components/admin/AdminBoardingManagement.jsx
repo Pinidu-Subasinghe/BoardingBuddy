@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
-const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
+const AdminBoardingManagement = ({ boardings, inspectors, onAssign, section = 'new' }) => {
+
   // Function to get status color
   const getStatusColor = (status) => {
     switch (status) {
@@ -17,6 +18,26 @@ const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
     }
   };
 
+  const approvedBoardings = useMemo(
+    () => boardings.filter((b) => b.status === 'approved'),
+    [boardings]
+  );
+
+  const newBoardings = useMemo(
+    () => boardings.filter((b) => b.status !== 'approved'),
+    [boardings]
+  );
+
+  const visibleBoardings = section === 'approved' ? approvedBoardings : newBoardings;
+
+  const emptyText = section === 'approved'
+    ? 'No approved boardings yet.'
+    : 'No new boardings yet.';
+
+  const helperText = section === 'approved'
+    ? 'Published boardings approved by admins appear here.'
+    : 'Unpublished boardings pending publication will appear here.';
+
   return (
     <div className="space-y-6 md:space-y-8">
       <h3 className="
@@ -26,16 +47,16 @@ const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
         Boarding Management
       </h3>
 
-      {boardings.length === 0 ? (
+      {visibleBoardings.length === 0 ? (
         <div className="
           bg-white rounded-xl shadow-sm border border-gray-200 
           p-8 sm:p-10 text-center
         ">
           <p className="text-lg text-gray-600 font-medium">
-            No boardings available yet.
+            {emptyText}
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            New boarding requests will appear here for review and inspector assignment.
+            {helperText}
           </p>
         </div>
       ) : (
@@ -43,7 +64,7 @@ const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
           bg-white rounded-xl shadow-sm border border-gray-200 
           divide-y divide-gray-100 overflow-hidden
         ">
-          {boardings.map(b => (
+          {visibleBoardings.map(b => (
             <div 
               key={b._id}
               className="
@@ -80,7 +101,7 @@ const AdminBoardingManagement = ({ boardings, inspectors, onAssign }) => {
 
               {/* Right: Assign / Status */}
               <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-                {b.status === 'pending' ? (
+                {section === 'new' && b.status === 'pending' ? (
                   <select 
                     defaultValue={b.assignedInspector || ''}
                     onChange={(e) => onAssign(b._id, e.target.value)}
