@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
 import NotificationBell from './NotificationBell';
 
@@ -12,6 +12,7 @@ const DashboardShell = ({
   children
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const contentScrollRef = useRef(null);
 
   const hasTopNav = user && user.role === 'student';
   const showNotifications = user && user.role !== 'student';
@@ -31,6 +32,10 @@ const DashboardShell = ({
       }
     });
   };
+
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeMenu]);
 
   return (
     <div className={`flex overflow-hidden bg-gray-100 ${hasTopNav ? 'h-[calc(100vh-4.1rem)]' : 'h-screen'}`}>
@@ -124,7 +129,7 @@ const DashboardShell = ({
           <div />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-gray-50">{children}</div>
+        <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-gray-50">{children}</div>
       </main>
     </div>
   );
