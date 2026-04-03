@@ -10,13 +10,14 @@ const {
   createUser,
   updateUser
 } = require('../controllers/userController');
+const { uploadProfile } = require('../config/multer');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Profile
 router.route('/profile')
   .get(protect, getUserProfile)
-  .put(protect, updateUserProfile)
+  .put(protect, uploadProfile.single('profileImage'), updateUserProfile)
   .delete(protect, deleteMyAccount);
 
 // Admin

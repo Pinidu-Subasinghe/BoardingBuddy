@@ -25,6 +25,7 @@ const AdminProfile = () => {
   });
 
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const [profileImageFile, setProfileImageFile] = useState(null);
 
   const [editMode, setEditMode] = useState({
     name: false,
@@ -70,26 +71,16 @@ const AdminProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const maxSizeBytes = 2 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
-      alert('Only JPEG, PNG, or WEBP images are allowed');
+      alert('Supported formats: JPG, JPEG, PNG, WEBP');
       e.target.value = '';
       return;
     }
 
-    if (file.size > maxSizeBytes) {
-      alert('Image size should be less than 2 MB');
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      setProfileImage(result);
-      setChanged(true);
-    };
-    reader.readAsDataURL(file);
+    setProfileImageFile(file);
+    setProfileImage(URL.createObjectURL(file));
+    setChanged(true);
   };
 
   const validateProfileFields = () => {
@@ -116,12 +107,13 @@ const AdminProfile = () => {
     }
 
     try {
-      const payload = {
-        name: fields.name,
-        email: fields.email,
-        contactNumber: fields.contactNumber,
-        profileImage,
-      };
+      const payload = new FormData();
+      payload.append('name', fields.name);
+      payload.append('email', fields.email);
+      payload.append('contactNumber', fields.contactNumber);
+      if (profileImageFile) {
+        payload.append('profileImage', profileImageFile);
+      }
 
       const res = await updateProfile(payload);
       const data = res.data;
@@ -130,7 +122,7 @@ const AdminProfile = () => {
       alert('Profile updated');
       window.location.reload();
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Unable to update profile';
+      const msg = err?.response?.data?.message || 'Supported formats: JPG, JPEG, PNG, WEBP';
       alert(msg);
     }
   };

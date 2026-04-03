@@ -47,7 +47,11 @@ const userSchema = new mongoose.Schema({
     accountHolderName: { type: String }
   },
 
-  profileImage: { type: String }
+  profileImage: { type: String },
+
+  otp: { type: String },
+  otpExpiry: { type: Date },
+  isEmailVerified: { type: Boolean, default: true }
 
 }, { timestamps: true });
 

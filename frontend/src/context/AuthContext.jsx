@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { loginUser, registerUser } from '../api/api';
+import { loginUser, registerUser, verifyRegistrationOtp } from '../api/api';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
@@ -70,6 +70,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (data) => {
     const res = await registerUser(data);
+    return res.data;
+  };
+
+  const verifyOtp = async (data) => {
+    const res = await verifyRegistrationOtp(data);
     localStorage.setItem('token', res.data.token);
     localStorage.setItem('user', JSON.stringify(res.data));
     setUser(res.data);
@@ -79,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   // logout is now memoized above
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, showAuthModal, openAuth, closeAuth }}>
+    <AuthContext.Provider value={{ user, login, register, verifyOtp, logout, showAuthModal, openAuth, closeAuth }}>
       {children}
     </AuthContext.Provider>
   );
