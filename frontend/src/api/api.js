@@ -48,6 +48,7 @@ API.interceptors.response.use(
 // Auth APIs
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);
+export const verifyRegistrationOtp = (data) => API.post('/auth/verify-otp', data);
 
 // User profile
 export const getProfile = () => API.get('/users/profile');
