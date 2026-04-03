@@ -13,7 +13,6 @@ const Browse = () => {
   const [loading, setLoading] = useState(true);
   const [amenityOptions, setAmenityOptions] = useState([]);
   const [filters, setFilters] = useState({
-    nearMyUniversity: false,
     university: '',
     priceMin: '',
     priceMax: '',
@@ -23,7 +22,6 @@ const Browse = () => {
     amenities: [],
   });
   const [appliedFilters, setAppliedFilters] = useState({
-    nearMyUniversity: false,
     university: '',
     priceMin: '',
     priceMax: '',
@@ -36,9 +34,9 @@ const Browse = () => {
 
   const applyFilters = (items, ratings, active) => {
     const gender = active._gender;
-    const nearUni = active._nearUniversity;
-    const nearMy = active.nearMyUniversity && nearUni;
-    const uni = active.university;
+    const defaultUniversity = active._defaultUniversity;
+    const selectedUniversity = String(active.university || '').trim();
+    const effectiveUniversity = selectedUniversity || defaultUniversity;
     const priceMin = Number(active.priceMin);
     const priceMax = Number(active.priceMax);
     const capacityMin = Number(active.capacityMin);
@@ -50,8 +48,8 @@ const Browse = () => {
       if (gender === 'male' && !(b.boardingType === 'boys' || b.boardingType === 'any')) return false;
       if (gender === 'female' && !(b.boardingType === 'girls' || b.boardingType === 'any')) return false;
 
-      if (nearMy && !((b.nearestUniversities || []).includes(nearUni))) return false;
-      if (!nearMy && uni && !((b.nearestUniversities || []).includes(uni))) return false;
+      // Default to the logged-in user's university, but allow explicit university filter override.
+      if (effectiveUniversity && !((b.nearestUniversities || []).includes(effectiveUniversity))) return false;
 
       if (!Number.isNaN(priceMin) && String(active.priceMin).trim() !== '') {
         if ((b.monthlyRent || 0) < priceMin) return false;
@@ -106,19 +104,17 @@ const Browse = () => {
         });
         setAmenityOptions(Array.from(tags));
 
-        const uni = user?.university?.trim();
+        const userUniversity = user?.university?.trim() || '';
         const gender = user?.gender?.toLowerCase();
         const filteredItems = applyFilters(items, nextRatingMap, {
           ...appliedFilters,
           _gender: gender,
-          _nearUniversity: uni,
+          _defaultUniversity: userUniversity,
         });
 
-        if (uni) {
-          const near = filteredItems.filter(b => Array.isArray(b.nearestUniversities) && b.nearestUniversities.includes(uni));
-          const oth = filteredItems.filter(b => !(Array.isArray(b.nearestUniversities) && b.nearestUniversities.includes(uni)));
-          setNearby(near.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
-          setOther(oth.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
+        if (userUniversity) {
+          setNearby(filteredItems.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
+          setOther([]);
         } else {
           setNearby([]);
           setOther(filteredItems.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
@@ -154,7 +150,6 @@ const Browse = () => {
 
   const handleReset = () => {
     const reset = {
-      nearMyUniversity: false,
       university: '',
       priceMin: '',
       priceMax: '',
@@ -168,12 +163,20 @@ const Browse = () => {
   };
 
   const userUniversity = user?.university?.trim() || '';
-  const canUseMyUniversity = Boolean(userUniversity);
+  const userGender = String(user?.gender || '').toLowerCase();
+  const genderFilterNote =
+    userGender === 'male'
+      ? 'Boardings are filtered by your profile gender. As a male user, you are seeing Boys and Any category boardings only.'
+      : userGender === 'female'
+        ? 'Boardings are filtered by your profile gender. As a female user, you are seeing Girls and Any category boardings only.'
+        : '';
+  const activeUniversityFilter = String(appliedFilters.university || '').trim();
+  const resultsUniversity = activeUniversityFilter || userUniversity;
+  const isViewingOwnUniversity = Boolean(userUniversity) && resultsUniversity === userUniversity;
   const filterUniversities = useMemo(
     () => Object.entries(universities).map(([code, name]) => ({ code, name })),
     []
   );
-  const userUniversityLabel = userUniversity;
 
   return (
     <div className="min-h-screen bg-gray-50/70 py-8 md:py-10 lg:py-12">
@@ -193,11 +196,15 @@ const Browse = () => {
             onToggleAmenity={handleToggleAmenity}
             onApply={handleApply}
             onReset={handleReset}
-            canUseMyUniversity={canUseMyUniversity}
-            userUniversity={userUniversityLabel}
           />
 
           <div>
+            {genderFilterNote && (
+              <p className="mb-4 text-sm font-medium text-red-600">
+                Note: {genderFilterNote}
+              </p>
+            )}
+
             {loading && boardings.length === 0 ? (
               <LoadingAnimation text="Loading boarding places..." containerClassName="py-20" />
             ) : boardings.length === 0 ? (
@@ -207,15 +214,25 @@ const Browse = () => {
               </div>
             ) : (
               <div className="space-y-12 md:space-y-16">
-                {user?.university && (
+                {userUniversity && (
                   <section>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-5 flex items-center gap-3">
-                      Popular among <span className="text-indigo-600 font-bold">{user.university}</span> students
+                    <h3 className="text-lg sm:text-2xl font-semibold text-gray-900 mb-5 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {isViewingOwnUniversity ? (
+                        <>
+                          Popular among <span className="text-indigo-600 font-bold">{userUniversity}</span> students
+                        </>
+                      ) : (
+                        <>
+                          Results for <span className="text-indigo-600 font-bold">{resultsUniversity}</span>
+                        </>
+                      )}
                     </h3>
 
                     {nearby.length === 0 ? (
                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-600">
-                        No boarding places found near your university yet.
+                        {isViewingOwnUniversity
+                          ? 'No boarding places found near your university yet.'
+                          : 'No boarding places found for the selected university.'}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
@@ -227,23 +244,25 @@ const Browse = () => {
                   </section>
                 )}
 
-                <section>
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-5">
-                    {user?.university ? "Other Universities" : "All Available Boardings"}
-                  </h3>
+                {!userUniversity && (
+                  <section>
+                    <h3 className="text-2xl font-semibold text-gray-900 mb-5">
+                      All Available Boardings
+                    </h3>
 
-                  {other.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-600">
-                      No other listings available at the moment.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
-                      {other.map(b => (
-                        <BoardingCard boarding={b} key={b._id || b.id} />
-                      ))}
-                    </div>
-                  )}
-                </section>
+                    {other.length === 0 ? (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-600">
+                        No listings available at the moment.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
+                        {other.map(b => (
+                          <BoardingCard boarding={b} key={b._id || b.id} />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
               </div>
             )}
           </div>

@@ -94,6 +94,11 @@ export const getMyPayments = () => API.get('/payments/my');
 export const getOwnerPayments = () => API.get('/payments/owner');
 export const getPaymentById = (id) => API.get(`/payments/${id}`);
 
+// Wishlist APIs
+export const addToWishlist = (boardingId) => API.post('/wishlist', { boardingId });
+export const getMyWishlist = () => API.get('/wishlist/my');
+export const removeFromWishlist = (boardingId) => API.delete(`/wishlist/${boardingId}`);
+
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');
 

@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react';
 import logo from '../assets/logo-no-bg.png';
 import { Link, useLocation } from 'react-router-dom';
+import { FiHeart } from 'react-icons/fi';
 import { AuthContext } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 
@@ -53,6 +54,17 @@ const Nav = () => {
 
           {/* Right – Auth / Profile (desktop only) + Mobile Hamburger */}
           <div className="flex items-center gap-4">
+            {user && user.role === 'student' && (
+              <Link
+                to="/student-dashboard"
+                state={{ activeMenu: 'wishlist' }}
+                aria-label="Wishlist"
+                title="Wishlist"
+                className="p-2 rounded-full bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 transition"
+              >
+                <FiHeart className="w-5 h-5" aria-hidden="true" />
+              </Link>
+            )}
             <NotificationBell user={user} />
             {user && user.role === 'student' ? (
               <Link
