@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import Swal from 'sweetalert2';
 import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding, deleteBoarding as apiDeleteBoarding } from '../../api/api';
+import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding } from '../../api/api';
 import OwnerBoardingCard from './OwnerBoardingCard';
 import OwnerAddBoarding from './OwnerAddBoarding';
 import OwnerUpdateBoarding from './OwnerUpdateBoarding';
@@ -115,34 +115,7 @@ const OwnerBoardings = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const result = await Swal.fire({
-      title: 'Delete this boarding?',
-      text: 'This action cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#dc2626',
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await apiDeleteBoarding(id);
-      setBoardings(prev => prev.filter(b => b._id !== id));
-      await Swal.fire({
-        title: 'Deleted',
-        text: 'Boarding deleted successfully.',
-        icon: 'success',
-        draggable: true,
-      });
-    } catch (err) {
-      console.error('Error deleting boarding:', err);
-      alert(err.response?.data?.message || 'Error deleting boarding');
-    }
-  };
+  
 
   const handleUpdate = async (id, payload) => {
     try {

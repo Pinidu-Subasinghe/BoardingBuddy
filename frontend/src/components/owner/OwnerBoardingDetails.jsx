@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
@@ -7,7 +7,6 @@ import {
   deleteBoarding as apiDeleteBoarding,
   updateBoarding as apiUpdateBoarding,
 } from "../../api/api";
-import { AuthContext } from "../../context/AuthContext";
 import LoadingAnimation from "../LoadingAnimation";
 import OwnerUpdateBoarding from "./OwnerUpdateBoarding";
 import { formatDate } from "../../utils/date";
@@ -15,7 +14,6 @@ import { formatDate } from "../../utils/date";
 const OwnerBoardingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
   const [boarding, setBoarding] = useState(null);
   const [rating, setRating] = useState(null);
   const [loading, setLoading] = useState(true);
