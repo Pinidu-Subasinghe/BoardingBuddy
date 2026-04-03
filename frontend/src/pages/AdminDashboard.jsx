@@ -7,7 +7,6 @@ import AdminUserManagement from '../components/admin/AdminUserManagement';
 import AdminProfile from '../components/admin/AdminProfile';
 import AdminInquiries from '../components/admin/AdminInquiries';
 import AdminReviewModeration from '../components/admin/AdminReviewModeration';
-import AdminAnalytics from '../components/admin/AdminAnalytics';
 import DashboardShell from '../components/DashboardShell';
 import LoadingAnimation from '../components/LoadingAnimation';
 
@@ -136,7 +135,6 @@ const AdminDashboard = () => {
     { key: 'boarding-management', label: 'Boarding Management' },
     { key: 'inquiries', label: 'Inquiries' },
     { key: 'review-moderation', label: 'Review Moderation' },
-    { key: 'analytics', label: 'Analytics' },
   ];
 
   return (
@@ -169,10 +167,6 @@ const AdminDashboard = () => {
 
           {activeMenu === 'review-moderation' && (
             <AdminReviewModeration />
-          )}
-
-          {activeMenu === 'analytics' && (
-            <AdminAnalytics />
           )}
         </>
       )}

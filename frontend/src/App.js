@@ -19,8 +19,6 @@ import StudentPaymentPage from './pages/StudentPaymentPage';
 import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import InspectorDashboard from './pages/InspectorDashboard';
-import Signup from './pages/Signup';
-import ForgotPassword from './pages/ForgotPassword';
 
 
 // Floating Jump to Top Button
@@ -85,55 +83,17 @@ function RoleDashboardGuard({ children }) {
 // Auth Modal
 function AuthModal() {
   const { showAuthModal, closeAuth } = useContext(AuthContext);
-  const [isVisible, setIsVisible] = React.useState(false);
-  const modalRef = React.useRef(null);
-
-  React.useEffect(() => {
-    if (!showAuthModal) return undefined;
-
-    setIsVisible(false);
-    const rafId = window.requestAnimationFrame(() => setIsVisible(true));
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        closeAuth();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      window.removeEventListener('keydown', onKeyDown);
-      setIsVisible(false);
-    };
-  }, [showAuthModal, closeAuth]);
-
-  React.useEffect(() => {
-    if (showAuthModal) {
-      modalRef.current?.focus();
-    }
-  }, [showAuthModal]);
 
   if (!showAuthModal) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-200 ${
-        isVisible ? 'bg-black/45 backdrop-blur-sm' : 'bg-black/0'
-      }`}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4"
       onClick={closeAuth}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Authentication dialog"
+      role="presentation"
     >
-      <div
-        ref={modalRef}
-        tabIndex={-1}
-        className={`w-full max-w-md transform transition-all duration-200 ${
-          isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-95 opacity-0'
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <AuthForm mode="modal" />
+      <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <AuthForm />
       </div>
     </div>
   );
@@ -158,8 +118,6 @@ function App() {
             <Route path="/boardings/:id/reviews" element={<BoardingReviewsPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
 
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />

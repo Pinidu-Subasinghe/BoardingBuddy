@@ -49,9 +49,6 @@ API.interceptors.response.use(
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);
 export const verifyRegistrationOtp = (data) => API.post('/auth/verify-otp', data);
-export const forgotPasswordRequest = (data) => API.post('/auth/forgot-password', data);
-export const verifyForgotPasswordOtpRequest = (data) => API.post('/auth/forgot-password/verify-otp', data);
-export const resetPasswordWithOtpRequest = (data) => API.post('/auth/forgot-password/reset', data);
 
 // User profile
 export const getProfile = () => API.get('/users/profile');
@@ -69,8 +66,6 @@ export const deleteBoarding = (id) => API.delete(`/boardings/${id}`);
 export const assignInspector = (data) => API.put('/admin/assign-inspector', data);
 export const getAdminReviews = () => API.get('/admin/reviews');
 export const deleteAdminReview = (reviewId) => API.delete(`/admin/reviews/${reviewId}`);
-export const getAdminAnalyticsSummary = () => API.get('/admin/analytics/summary');
-export const getAdminAnalyticsDetails = () => API.get('/admin/analytics/details');
 export const getAllUsers = () => API.get('/users');
 export const createUser = (data) => API.post('/users', data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
