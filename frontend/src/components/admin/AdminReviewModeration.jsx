@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 import { FaStar } from 'react-icons/fa';
-import { FiDownload, FiTrash2 } from 'react-icons/fi';
+import { FiDownload, FiSearch, FiTrash2 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { deleteAdminReview, getAdminReviews } from '../../api/api';
 import { formatDateTime } from '../../utils/date';
@@ -31,6 +31,8 @@ const AdminReviewModeration = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState('');
+  const [searchBy, setSearchBy] = useState('student');
+  const [searchQuery, setSearchQuery] = useState('');
   const [messageModal, setMessageModal] = useState({
     open: false,
     studentName: '',
@@ -76,6 +78,18 @@ const AdminReviewModeration = () => {
       return bTime - aTime;
     });
   }, [reviews]);
+
+  const filteredReviews = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return sortedReviews;
+
+    return sortedReviews.filter((review) => {
+      const studentName = String(review?.student?.name || '').toLowerCase();
+      const boardingName = String(review?.boarding?.title || '').toLowerCase();
+      const valueToMatch = searchBy === 'boarding' ? boardingName : studentName;
+      return valueToMatch.includes(query);
+    });
+  }, [sortedReviews, searchBy, searchQuery]);
 
   const allRatingTags = useMemo(() => {
     const tags = new Set();
@@ -242,6 +256,36 @@ const AdminReviewModeration = () => {
         </button>
       </div>
 
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:max-w-2xl">
+            <select
+              value={searchBy}
+              onChange={(event) => setSearchBy(event.target.value)}
+              className="h-11 w-full rounded-xl border border-indigo-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 sm:w-56"
+            >
+              <option value="student">Student Name</option>
+              <option value="boarding">Boarding Name</option>
+            </select>
+
+            <div className="relative w-full">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={searchBy === 'boarding' ? 'Type boarding name...' : 'Type student name...'}
+                className="h-11 w-full rounded-xl border border-indigo-200 bg-white py-2 pl-10 pr-3 text-sm text-gray-700 shadow-sm transition-colors placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+            </div>
+          </div>
+
+          <div className="inline-flex w-fit items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+            {loading ? 'Searching...' : `${filteredReviews.length} of ${sortedReviews.length} reviews`}
+          </div>
+        </div>
+      </div>
+
       {loading ? (
         <LoadingAnimation text="Loading reviews..." />
       ) : sortedReviews.length === 0 ? (
@@ -264,7 +308,13 @@ const AdminReviewModeration = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {sortedReviews.map((review) => {
+                {filteredReviews.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 sm:px-6 py-12 text-center text-sm text-gray-500">
+                      No matching reviews found. Try typing a few letters from another name.
+                    </td>
+                  </tr>
+                ) : filteredReviews.map((review) => {
                   const stars = toStars(review?.overallRating);
                   const studentName = review?.student?.name || 'Unknown student';
                   const boardingName = review?.boarding?.title || 'Unknown boarding';
