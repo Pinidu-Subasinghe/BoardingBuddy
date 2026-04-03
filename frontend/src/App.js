@@ -17,6 +17,8 @@ import FAQ from './pages/FAQ';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentPaymentPage from './pages/StudentPaymentPage';
 import OwnerDashboard from './pages/OwnerDashboard';
+import OwnerBoardingDetails from './components/owner/OwnerBoardingDetails';
+import OwnerOngoingStays from './components/owner/OwnerOngoingStays';
 import AdminDashboard from './pages/AdminDashboard';
 import InspectorDashboard from './pages/InspectorDashboard';
 
@@ -63,6 +65,16 @@ function ScrollToTop() {
 function RoleDashboardGuard({ children }) {
   const { user } = useContext(AuthContext);
   const location = useLocation();
+
+  // Allow access to public pages, boarding details, and owner boarding details for all roles
+  const publicPaths = ['/', '/browse', '/about', '/contact', '/privacy', '/terms', '/faq'];
+  const isBoardingDetails = location.pathname.startsWith('/boardings/');
+  const isOwnerBoardingDetails = location.pathname.startsWith('/owner/boardings/');
+  const isPublicPath = publicPaths.includes(location.pathname) || isBoardingDetails || isOwnerBoardingDetails;
+
+  if (isPublicPath) {
+    return children;
+  }
 
   if (user && user.role && user.role !== 'student') {
     let dashboardPath = '/';
@@ -126,6 +138,8 @@ function App() {
             <Route path="/student-dashboard" element={<StudentDashboard />} />
             <Route path="/student-payment/:bookingId" element={<StudentPaymentPage />} />
             <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+            <Route path="/owner/boardings/:id" element={<OwnerBoardingDetails />} />
+            <Route path="/owner/ongoing-stays" element={<OwnerOngoingStays />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/inspector-dashboard" element={<InspectorDashboard />} />
           </Routes>

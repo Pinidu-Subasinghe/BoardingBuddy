@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import Swal from 'sweetalert2';
+import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding, deleteBoarding as apiDeleteBoarding } from '../../api/api';
 import OwnerBoardingCard from './OwnerBoardingCard';
@@ -10,6 +11,7 @@ import LoadingAnimation from '../LoadingAnimation';
 
 const OwnerBoardings = () => {
   const { user } = useContext(AuthContext);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [boardings, setBoardings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +35,17 @@ const OwnerBoardings = () => {
       try {
         const res = await apiGetBoardings();
         setBoardings(res.data || []);
+        
+        // Check for edit query param after boardings load
+        const editId = searchParams.get('edit');
+        if (editId && res.data) {
+          const boardingToEdit = res.data.find(b => b._id === editId);
+          if (boardingToEdit) {
+            setEditingBoarding(boardingToEdit);
+            // Clear the query param
+            setSearchParams({}, { replace: true });
+          }
+        }
       } catch (err) {
         console.error('Error fetching boardings:', err);
       } finally {
@@ -41,7 +54,7 @@ const OwnerBoardings = () => {
     };
 
     fetchBoardings();
-  }, [user]);
+  }, [user, searchParams, setSearchParams]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -238,8 +251,6 @@ const OwnerBoardings = () => {
               <OwnerBoardingCard
                 key={boarding._id}
                 boarding={boarding}
-                onEdit={() => setEditingBoarding(boarding)}
-                onDelete={() => handleDelete(boarding._id)}
               />
             ))}
           </div>
