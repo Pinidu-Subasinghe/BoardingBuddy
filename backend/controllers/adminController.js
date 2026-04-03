@@ -1,5 +1,7 @@
 const Boarding = require('../models/Boarding');
 const Review = require('../models/Review');
+const User = require('../models/User');
+const Inquiry = require('../models/Inquiry');
 const { addNotification } = require('../utils/notification');
 
 // Admin: Assign inspector to a boarding
@@ -65,4 +67,144 @@ const deleteReviewByAdmin = async (req, res) => {
   }
 };
 
-module.exports = { assignInspector, getAllReviews, deleteReviewByAdmin };
+const getAdminAnalyticsSummary = async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      totalStudents,
+      totalOwners,
+      totalBoardings,
+      totalInquiries,
+      totalReviews,
+    ] = await Promise.all([
+      User.countDocuments({}),
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'owner' }),
+      Boarding.countDocuments({}),
+      Inquiry.countDocuments({}),
+      Review.countDocuments({}),
+    ]);
+
+    return res.json({
+      totalUsers,
+      totalStudents,
+      totalOwners,
+      totalBoardings,
+      totalInquiries,
+      totalReviews,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const getAdminAnalyticsDetails = async (req, res) => {
+  try {
+    const [
+      totalStudents,
+      totalOwners,
+      totalBoardings,
+      approvedBoardings,
+      pendingBoardings,
+      rejectedBoardings,
+      inquiryStatusRows,
+      penaltiesAgg,
+      topPenalizedBoardings,
+      recentUsers,
+      recentInquiries,
+      recentBoardings,
+    ] = await Promise.all([
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'owner' }),
+      Boarding.countDocuments({}),
+      Boarding.countDocuments({ status: 'approved' }),
+      Boarding.countDocuments({ status: { $in: ['pending', 'inspector assigned'] } }),
+      Boarding.countDocuments({ status: 'rejected' }),
+      Inquiry.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+      Boarding.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalPenaltyPoints: { $sum: { $ifNull: ['$penaltyPoints', 0] } },
+            penalizedBoardingsCount: {
+              $sum: {
+                $cond: [{ $gt: [{ $ifNull: ['$penaltyPoints', 0] }, 0] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]),
+      Boarding.find({ penaltyPoints: { $gt: 0 } })
+        .sort({ penaltyPoints: -1, updatedAt: -1 })
+        .limit(5)
+        .select('title city status penaltyPoints updatedAt')
+        .lean(),
+      User.find({})
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('name role createdAt')
+        .lean(),
+      Inquiry.find({})
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('title status createdAt')
+        .lean(),
+      Boarding.find({})
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('title city status createdAt')
+        .lean(),
+    ]);
+
+    const inquiryAnalytics = {
+      pending: 0,
+      inReview: 0,
+      resolved: 0,
+      rejected: 0,
+    };
+
+    inquiryStatusRows.forEach((row) => {
+      if (row._id === 'Pending') inquiryAnalytics.pending = row.count;
+      if (row._id === 'In Review') inquiryAnalytics.inReview = row.count;
+      if (row._id === 'Resolved') inquiryAnalytics.resolved = row.count;
+      if (row._id === 'Rejected') inquiryAnalytics.rejected = row.count;
+    });
+
+    const penalties = penaltiesAgg[0] || { totalPenaltyPoints: 0, penalizedBoardingsCount: 0 };
+
+    return res.json({
+      userDistribution: {
+        students: totalStudents,
+        owners: totalOwners,
+      },
+      boardingStats: {
+        total: totalBoardings,
+        active: approvedBoardings,
+        inactive: Math.max(pendingBoardings + rejectedBoardings, 0),
+      },
+      inquiryAnalytics,
+      penaltyInsights: {
+        totalPenaltyPoints: penalties.totalPenaltyPoints || 0,
+        penalizedBoardingsCount: penalties.penalizedBoardingsCount || 0,
+        topPenalizedBoardings,
+      },
+      recentActivities: {
+        newUsers: recentUsers,
+        newInquiries: recentInquiries,
+        newBoardings: recentBoardings,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = {
+  assignInspector,
+  getAllReviews,
+  deleteReviewByAdmin,
+  getAdminAnalyticsSummary,
+  getAdminAnalyticsDetails,
+};

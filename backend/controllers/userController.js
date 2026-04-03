@@ -6,6 +6,18 @@ const { sendTransactionalEmail } = require("../utils/email");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
 const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const NAME_REGEX = /^[A-Za-z\s]+$/;
+
+const isValidPastOrTodayDate = (value) => {
+  if (!value) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  parsed.setHours(0, 0, 0, 0);
+  return parsed <= today;
+};
 
 const parseMaybeJson = (value) => {
   if (typeof value !== "string") return value;
@@ -219,15 +231,126 @@ const deleteUser = async (req, res) => {
 // Admin: create new user
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role, contactNumber, university, gender } = req.body;
-    if (!name || !email || !password || !contactNumber || !gender) {
+    const {
+      name,
+      email,
+      password,
+      confirmPassword,
+      role,
+      contactNumber,
+      university,
+      gender,
+      dob,
+      guardian,
+      paymentDetails,
+    } = req.body;
+
+    if (!name || !email || !password || !contactNumber || !gender || !dob) {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    const exists = await User.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedContactNumber = String(contactNumber).replace(/\D/g, '');
+    const normalizedRole = role || 'student';
+
+    if (!NAME_REGEX.test(String(name).trim())) {
+      return res.status(400).json({ message: 'Name must contain only English letters' });
+    }
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    if (!STRONG_PASSWORD_REGEX.test(String(password))) {
+      return res.status(400).json({
+        message:
+          'Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)'
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    if (!MOBILE_REGEX.test(normalizedContactNumber)) {
+      return res.status(400).json({ message: 'Mobile number must be exactly 10 digits' });
+    }
+
+    if (!isValidPastOrTodayDate(dob)) {
+      return res.status(400).json({ message: 'Date of birth cannot be in the future' });
+    }
+
+    if (normalizedRole === 'student' && !university) {
+      return res.status(400).json({ message: 'University is required for students' });
+    }
+
+    if (normalizedRole === 'student') {
+      const guardianType = guardian?.type;
+      const guardianName = guardian?.name;
+      const guardianPhone = guardian?.phone;
+      const normalizedGuardianPhone =
+        typeof guardianPhone === 'string' ? guardianPhone.replace(/\D/g, '') : '';
+
+      if (!guardianType || !guardianName || !normalizedGuardianPhone) {
+        return res.status(400).json({ message: 'Guardian details are required' });
+      }
+
+      if (!MOBILE_REGEX.test(normalizedGuardianPhone)) {
+        return res.status(400).json({ message: 'Guardian phone must be exactly 10 digits' });
+      }
+    }
+
+    if (normalizedRole === 'owner') {
+      const accountNumber = paymentDetails?.accountNumber;
+      const bankName = paymentDetails?.bankName;
+      const branchName = paymentDetails?.branchName;
+      const accountHolderName = paymentDetails?.accountHolderName;
+      const normalizedAccountNumber =
+        typeof accountNumber === 'string' ? accountNumber.replace(/\D/g, '') : '';
+
+      if (!normalizedAccountNumber || !bankName || !branchName || !accountHolderName) {
+        return res.status(400).json({ message: 'Payment details are required' });
+      }
+
+      if (!ACCOUNT_NUMBER_REGEX.test(normalizedAccountNumber)) {
+        return res.status(400).json({ message: 'Account number must be 12 to 16 digits' });
+      }
+    }
+
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists) return res.status(400).json({ message: 'User with this email already exists' });
 
-    const user = await User.create({ name, email, password, role: role || 'student', contactNumber, university, gender });
+    const user = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      password,
+      role: normalizedRole,
+      contactNumber: normalizedContactNumber,
+      university: normalizedRole === 'student' ? university : undefined,
+      gender,
+      dob: new Date(dob),
+      guardian: normalizedRole === 'student'
+        ? {
+            type: guardian?.type,
+            name: guardian?.name,
+            phone: typeof guardian?.phone === 'string' ? guardian.phone.replace(/\D/g, '') : '',
+          }
+        : undefined,
+      paymentDetails: normalizedRole === 'owner'
+        ? {
+            accountNumber: typeof paymentDetails?.accountNumber === 'string'
+              ? paymentDetails.accountNumber.replace(/\D/g, '')
+              : '',
+            bankName: paymentDetails?.bankName,
+            branchName: paymentDetails?.branchName,
+            accountHolderName: paymentDetails?.accountHolderName,
+          }
+        : undefined,
+      // Admin-created users are treated as verified and skip OTP verification.
+      isEmailVerified: true,
+      otp: undefined,
+      otpExpiry: undefined,
+    });
 
     res.status(201).json({
       _id: user._id,
