@@ -26,6 +26,7 @@ const OwnerProfile = () => {
   });
 
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const [profileImageFile, setProfileImageFile] = useState(null);
 
   const [editMode, setEditMode] = useState({
     name: false,
@@ -71,7 +72,6 @@ const OwnerProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const maxSizeBytes = 2 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
       alert('Image format is invalid. Use JPG, JPEG, PNG, or WEBP.');
@@ -79,18 +79,9 @@ const OwnerProfile = () => {
       return;
     }
 
-    if (file.size > maxSizeBytes) {
-      alert('Image size is exceeded. Please upload less than 2 MB.');
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      setProfileImage(result);
-      setChanged(true);
-    };
-    reader.readAsDataURL(file);
+    setProfileImageFile(file);
+    setProfileImage(URL.createObjectURL(file));
+    setChanged(true);
   };
 
   const validateProfileFields = () => {
@@ -117,12 +108,13 @@ const OwnerProfile = () => {
     }
 
     try {
-      const payload = {
-        name: fields.name,
-        email: fields.email,
-        contactNumber: fields.contactNumber,
-        profileImage,
-      };
+      const payload = new FormData();
+      payload.append('name', fields.name);
+      payload.append('email', fields.email);
+      payload.append('contactNumber', fields.contactNumber);
+      if (profileImageFile) {
+        payload.append('profileImage', profileImageFile);
+      }
 
       const res = await updateProfile(payload);
       let data = res.data;
@@ -132,7 +124,7 @@ const OwnerProfile = () => {
       window.location.reload();
     } catch (err) {
       const msg = err?.response?.data?.message
-        || 'Uploading an image should be JPG/JPEG/PNG/WEBP and keep it under 2 MB.';
+        || 'Supported formats: JPG, JPEG, PNG, WEBP';
       alert(msg);
     }
   };
