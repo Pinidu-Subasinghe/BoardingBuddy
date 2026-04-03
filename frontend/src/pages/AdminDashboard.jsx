@@ -13,7 +13,7 @@ import LoadingAnimation from '../components/LoadingAnimation';
 
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
-  const [activeMenu, setActiveMenu] = useState('boarding-management');
+  const [activeMenu, setActiveMenu] = useState('new-boardings');
   const [boardings, setBoardings] = useState([]);
   const [users, setUsers] = useState([]);
   const [inspectors, setInspectors] = useState([]);
@@ -133,7 +133,15 @@ const AdminDashboard = () => {
   const menuItems = [
     { key: 'profile', label: 'My Profile' },
     { key: 'user-management', label: 'User Management' },
-    { key: 'boarding-management', label: 'Boarding Management' },
+    {
+      key: 'boarding-management',
+      label: 'Boarding Management',
+      defaultSubKey: 'new-boardings',
+      subItems: [
+        { key: 'new-boardings', label: 'New Boardings' },
+        { key: 'approved-boardings', label: 'Approved Boardings' },
+      ],
+    },
     { key: 'inquiries', label: 'Inquiries' },
     { key: 'review-moderation', label: 'Review Moderation' },
     { key: 'analytics-reports', label: 'Analytics & Reports' },
@@ -145,8 +153,22 @@ const AdminDashboard = () => {
         <LoadingAnimation text="Loading admin data..." />
       ) : (
         <>
-          {activeMenu === 'boarding-management' && (
-            <AdminBoardingManagement boardings={boardings} inspectors={inspectors} onAssign={handleAssign} />
+          {(activeMenu === 'boarding-management' || activeMenu === 'new-boardings') && (
+            <AdminBoardingManagement
+              boardings={boardings}
+              inspectors={inspectors}
+              onAssign={handleAssign}
+              section="new"
+            />
+          )}
+
+          {activeMenu === 'approved-boardings' && (
+            <AdminBoardingManagement
+              boardings={boardings}
+              inspectors={inspectors}
+              onAssign={handleAssign}
+              section="approved"
+            />
           )}
 
           {activeMenu === 'user-management' && (
