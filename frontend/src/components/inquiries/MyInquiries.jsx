@@ -97,20 +97,24 @@ const MyInquiries = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md ${
+                aria-label="List view"
+                title="List view"
+                className={`px-3 py-1 text-sm rounded-md ${
                   viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                List
+                <i className="bi bi-list-ul" aria-hidden="true" />
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md ${
+                aria-label="Grid view"
+                title="Grid view"
+                className={`px-3 py-1 text-sm rounded-md ${
                   viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600'
                 }`}
               >
-                Grid
+                <i className="bi bi-grid-3x3-gap" aria-hidden="true" />
               </button>
             </div>
           )}
