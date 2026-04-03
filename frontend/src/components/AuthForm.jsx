@@ -52,8 +52,8 @@ const AuthForm = ({ initialMode = 'login' }) => {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [guardianExpanded, setGuardianExpanded] = useState(true);
-  const [paymentExpanded, setPaymentExpanded] = useState(true);
+  const [guardianExpanded, setGuardianExpanded] = useState(false);
+  const [paymentExpanded, setPaymentExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,7 +88,7 @@ const AuthForm = ({ initialMode = 'login' }) => {
   const navigateByRole = (role) => {
     switch (role) {
       case 'student':
-        navigate('/student-dashboard');
+        navigate('/');
         break;
       case 'owner':
         navigate('/owner-dashboard');
@@ -104,7 +104,30 @@ const AuthForm = ({ initialMode = 'login' }) => {
     }
   };
 
-  const inputClass = (hasError) => `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`;
+  const switchAuthMode = (nextLoginState) => {
+    setIsLogin(nextLoginState);
+    setErrors({});
+    setFormError('');
+    navigate(nextLoginState ? '/login' : '/signup');
+  };
+
+  const inputClass = (hasError) => {
+    if (isLogin) {
+      return `w-full border-0 border-b bg-transparent px-1 py-2.5 text-sm outline-none transition ${
+        hasError
+          ? 'border-red-500 focus:border-red-600'
+          : 'border-gray-300 focus:border-gray-900'
+      }`;
+    }
+
+    return `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 ${
+      hasError ? 'border-red-500' : 'border-gray-300'
+    }`;
+  };
+
+  const submitButtonClass = isLogin
+    ? 'w-full rounded-lg bg-gray-900 py-2.5 text-sm font-semibold text-white transition hover:bg-black disabled:bg-gray-500'
+    : 'w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:bg-indigo-300';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -230,6 +253,17 @@ const AuthForm = ({ initialMode = 'login' }) => {
 
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
+      if (!isLogin && formData.role === 'student' && (validationErrors.guardianName || validationErrors.guardianPhone)) {
+        setGuardianExpanded(true);
+      }
+      if (!isLogin && formData.role === 'owner' && (
+        validationErrors.paymentAccountNumber
+        || validationErrors.paymentBankName
+        || validationErrors.paymentBranchName
+        || validationErrors.paymentAccountHolderName
+      )) {
+        setPaymentExpanded(true);
+      }
       setErrors(validationErrors);
       return;
     }
@@ -239,7 +273,12 @@ const AuthForm = ({ initialMode = 'login' }) => {
 
       if (isLogin) {
         const userData = await login({ email: formData.email, password: formData.password });
-        await Swal.fire({ title: 'Signed in!', icon: 'success' });
+        await Swal.fire({
+          title: 'Signed in!',
+          icon: 'success',
+          timer: 1000,
+          showConfirmButton: false,
+        });
         navigateByRole(userData.role);
         return;
       }
@@ -377,12 +416,37 @@ const AuthForm = ({ initialMode = 'login' }) => {
   };
 
   return (
-    <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xl">
-      <h2 className="text-2xl font-semibold text-gray-900 text-center mb-1">
-        {isLogin ? 'Welcome back' : 'Create your account'}
+    <div className="w-full max-w-[30rem]">
+      <p className="text-2xl font-bold text-gray-900">BoardingBuddy</p>
+
+      <h2 className="mt-5 text-2xl sm:text-3xl font-bold text-gray-900">
+        {isLogin ? 'Welcome Back!' : 'Create your account'}
       </h2>
-      <p className="text-sm text-gray-600 text-center mb-6">
-        {isLogin ? 'Sign in to continue' : 'Sign up to get started'}
+
+      <p className="mt-1 text-sm text-gray-600 mb-5">
+        {isLogin ? (
+          <>
+            Don&apos;t have an account?{' '}
+            <button
+              type="button"
+              onClick={() => switchAuthMode(false)}
+              className="font-semibold text-gray-800 underline underline-offset-2 hover:text-black"
+            >
+              Create a new account now
+            </button>
+          </>
+        ) : (
+          <>
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={() => switchAuthMode(true)}
+              className="font-semibold text-gray-800 underline underline-offset-2 hover:text-black"
+            >
+              Sign in now
+            </button>
+          </>
+        )}
       </p>
 
       {formError && (
@@ -391,7 +455,7 @@ const AuthForm = ({ initialMode = 'login' }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
         {!isLogin && (
           <>
             <div>
@@ -517,8 +581,10 @@ const AuthForm = ({ initialMode = 'login' }) => {
         </div>
 
         {isLogin && (
-          <div className="text-right -mt-1">
-            <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-indigo-600 hover:underline">Forgot Password?</button>
+          <div className="text-center -mt-1">
+            <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-gray-600 hover:text-gray-900 hover:underline">
+              Forgot password <span className="font-semibold underline underline-offset-2">Click here</span>
+            </button>
           </div>
         )}
 
@@ -543,27 +609,10 @@ const AuthForm = ({ initialMode = 'login' }) => {
           </div>
         )}
 
-        <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:bg-indigo-300">
+        <button type="submit" disabled={isSubmitting} className={submitButtonClass}>
           {isSubmitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
         </button>
       </form>
-
-      <p className="text-sm text-center text-gray-600 mt-5">
-        {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-        <button
-          type="button"
-          onClick={() => {
-            const nextLoginState = !isLogin;
-            setIsLogin(nextLoginState);
-            setErrors({});
-            setFormError('');
-            navigate(nextLoginState ? '/login' : '/signup');
-          }}
-          className="font-medium text-indigo-600 hover:underline"
-        >
-          {isLogin ? 'Sign up' : 'Sign in'}
-        </button>
-      </p>
 
       {showOtpModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4" role="dialog" aria-modal="true">
