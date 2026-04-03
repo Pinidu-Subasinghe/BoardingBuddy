@@ -7,6 +7,15 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
 const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
 
+const parseMaybeJson = (value) => {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
 const buildProfileUpdatedEmail = (userName) => ({
   subject: "Your BoardingBuddy Profile Was Updated",
   text:
@@ -57,6 +66,9 @@ const updateUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
+    const guardianInput = parseMaybeJson(req.body.guardian);
+    const paymentDetailsInput = parseMaybeJson(req.body.paymentDetails);
+
     // Validate only fields that are being updated.
     if (req.body.email !== undefined) {
       const normalizedEmail = String(req.body.email).trim().toLowerCase();
@@ -74,8 +86,8 @@ const updateUserProfile = async (req, res) => {
       user.contactNumber = normalizedContactNumber;
     }
 
-    if (req.body.profileImage !== undefined) {
-      user.profileImage = req.body.profileImage;
+    if (req.file?.path) {
+      user.profileImage = req.file.path;
     }
 
     user.name = req.body.name || user.name;
@@ -83,10 +95,10 @@ const updateUserProfile = async (req, res) => {
     if (user.role === "student") {
       user.university = req.body.university || user.university;
 
-      if (req.body.guardian) {
-        const guardianName = req.body.guardian.name;
-        const guardianPhone = req.body.guardian.phone;
-        const guardianType = req.body.guardian.type || user.guardian?.type || "Other";
+      if (guardianInput) {
+        const guardianName = guardianInput.name;
+        const guardianPhone = guardianInput.phone;
+        const guardianType = guardianInput.type || user.guardian?.type || "Other";
         const normalizedGuardianPhone =
           typeof guardianPhone === "string" ? guardianPhone.replace(/\D/g, "") : "";
 
@@ -106,11 +118,11 @@ const updateUserProfile = async (req, res) => {
       }
     }
 
-    if (user.role === "owner" && req.body.paymentDetails) {
-      const accountNumber = req.body.paymentDetails.accountNumber;
-      const bankName = req.body.paymentDetails.bankName;
-      const branchName = req.body.paymentDetails.branchName;
-      const accountHolderName = req.body.paymentDetails.accountHolderName;
+    if (user.role === "owner" && paymentDetailsInput) {
+      const accountNumber = paymentDetailsInput.accountNumber;
+      const bankName = paymentDetailsInput.bankName;
+      const branchName = paymentDetailsInput.branchName;
+      const accountHolderName = paymentDetailsInput.accountHolderName;
       const normalizedAccountNumber =
         typeof accountNumber === "string" ? accountNumber.replace(/\D/g, "") : "";
 

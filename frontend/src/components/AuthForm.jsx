@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import universities from '../data/universities.json';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -48,13 +48,18 @@ const isValidPastOrTodayDate = (value) => {
 };
 
 const AuthForm = () => {
-  const { login, register, closeAuth } = useContext(AuthContext);
+  const { login, register, verifyOtp, closeAuth } = useContext(AuthContext);
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [guardianExpanded, setGuardianExpanded] = useState(true);
   const [paymentExpanded, setPaymentExpanded] = useState(true);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const otpInputRefs = useRef([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -76,6 +81,24 @@ const AuthForm = () => {
   });
 
   const [errors, setErrors] = useState({});
+
+  const navigateByRole = (role) => {
+    if (role && role !== 'student') {
+      switch (role) {
+        case 'owner':
+          navigate('/owner-dashboard');
+          break;
+        case 'inspector':
+          navigate('/inspector-dashboard');
+          break;
+        case 'admin':
+          navigate('/admin-dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    }
+  };
 
   const universityOptions = Object.entries(universities);
 
@@ -206,12 +229,11 @@ const AuthForm = () => {
     }
 
     try {
-      let userData;
-
       if (isLogin) {
-        userData = await login({ email: formData.email, password: formData.password });
+        const userData = await login({ email: formData.email, password: formData.password });
         Swal.fire({ title: 'Signed in!', icon: 'success', draggable: true });
         closeAuth();
+        navigateByRole(userData.role);
       } else {
         const payload = {
           name: formData.name,
@@ -242,27 +264,12 @@ const AuthForm = () => {
           };
         }
 
-        userData = await register(payload);
-        Swal.fire({ title: 'Account created', icon: 'success', draggable: true });
-        closeAuth();
-      }
-
-      const role = userData.role;
-
-      if (role && role !== 'student') {
-        switch (role) {
-          case 'owner':
-            navigate('/owner-dashboard');
-            break;
-          case 'inspector':
-            navigate('/inspector-dashboard');
-            break;
-          case 'admin':
-            navigate('/admin-dashboard');
-            break;
-          default:
-            navigate('/');
-        }
+        const registerResult = await register(payload);
+        setPendingEmail(registerResult.email || formData.email.trim().toLowerCase());
+        setOtpCode('');
+        setOtpError('');
+        setShowOtpModal(true);
+        Swal.fire({ title: 'Verify your email', text: 'An OTP has been sent to your email.', icon: 'info', draggable: true });
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Error occurred';
@@ -271,6 +278,92 @@ const AuthForm = () => {
       } else {
         Swal.fire({ title: 'Error', text: msg, icon: 'error' });
       }
+    }
+  };
+
+  const handleOtpDigitChange = (index, value) => {
+    const digitsOnly = value.replace(/\D/g, '');
+
+    if (!digitsOnly) {
+      if (index < otpCode.length) {
+        const next = otpCode.slice(0, index) + otpCode.slice(index + 1);
+        setOtpCode(next);
+      }
+      setOtpError('');
+      return;
+    }
+
+    if (index > otpCode.length) return;
+
+    const digit = digitsOnly.slice(-1);
+    let next;
+
+    if (index === otpCode.length) {
+      next = (otpCode + digit).slice(0, 6);
+    } else {
+      next = (otpCode.slice(0, index) + digit + otpCode.slice(index + 1)).slice(0, 6);
+    }
+
+    setOtpCode(next);
+    setOtpError('');
+
+    if (index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (otpCode[index]) {
+        e.preventDefault();
+        const next = otpCode.slice(0, index) + otpCode.slice(index + 1);
+        setOtpCode(next);
+        return;
+      }
+
+      if (index > 0) {
+        e.preventDefault();
+        otpInputRefs.current[index - 1]?.focus();
+        const next = otpCode.slice(0, index - 1) + otpCode.slice(index);
+        setOtpCode(next);
+      }
+    }
+
+    if (e.key === 'ArrowLeft' && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+
+    if (e.key === 'ArrowRight' && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    setOtpCode(pasted);
+    setOtpError('');
+    const nextFocusIndex = Math.min(pasted.length, 5);
+    otpInputRefs.current[nextFocusIndex]?.focus();
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      setOtpError('OTP must be 6 digits');
+      return;
+    }
+
+    try {
+      const userData = await verifyOtp({ email: pendingEmail, otp: otpCode });
+      Swal.fire({ title: 'Account verified', icon: 'success', draggable: true });
+      setShowOtpModal(false);
+      closeAuth();
+      navigateByRole(userData.role);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'OTP verification failed';
+      setOtpError(msg);
     }
   };
 
@@ -441,6 +534,7 @@ const AuthForm = () => {
                     )}
                   </div>
                 </>
+
               )}
 
               {formData.role === 'owner' && (
@@ -665,6 +759,9 @@ const AuthForm = () => {
               setIsLogin(!isLogin);
               setShowPassword(false);
               setShowConfirmPassword(false);
+              setShowOtpModal(false);
+              setOtpCode('');
+              setOtpError('');
               setErrors({});
             }}
             className="text-indigo-600 hover:underline"
@@ -672,6 +769,50 @@ const AuthForm = () => {
             {isLogin ? 'Sign up' : 'Sign in'}
           </button>
         </p>
+
+        {showOtpModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4" role="dialog" aria-modal="true">
+            <div className="w-full max-w-sm bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-900 text-center mb-1">Verify Your Email</h3>
+              <p className="text-xs text-gray-600 text-center mb-4">Enter the 6-digit OTP sent to {pendingEmail}</p>
+              <div className="flex items-center justify-center gap-2" onPaste={handleOtpPaste}>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => {
+                      otpInputRefs.current[index] = el;
+                    }}
+                    type="text"
+                    value={otpCode[index] || ''}
+                    onChange={(e) => handleOtpDigitChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    inputMode="numeric"
+                    maxLength={1}
+                    autoFocus={index === 0}
+                    className={`h-11 w-11 text-center border rounded-md text-base focus:ring-2 focus:ring-indigo-500 outline-none ${otpError ? 'border-red-500' : ''}`}
+                  />
+                ))}
+              </div>
+              {otpError && <p className="text-xs text-red-500 mt-1">{otpError}</p>}
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  className="w-1/2 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  className="w-1/2 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
+                >
+                  Verify
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
