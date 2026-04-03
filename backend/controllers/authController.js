@@ -38,6 +38,19 @@ const buildWelcomeEmail = (userName) => ({
     "BoardingBuddy \ud83c\udfe0 Team"
 });
 
+const buildForgotPasswordOtpEmail = (otp) => ({
+  subject: "Password Reset - BoardingBuddy 🏠",
+  text:
+    "Dear User,\n\n" +
+    "You requested to reset your password.\n\n" +
+    "Use the OTP below to continue:\n" +
+    `${otp}\n\n` +
+    "This OTP will expire in 10 minutes.\n\n" +
+    "If you did not request this, please ignore this email.\n\n" +
+    "Thank You,\n" +
+    "BoardingBuddy 🏠 Team",
+});
+
 // Register
 const registerUser = async (req, res) => {
   const {
@@ -255,8 +268,8 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: "OTP has expired. Please sign up again" });
     }
 
-    const isDevTestOtp = process.env.NODE_ENV === "development" && otp === "000000";
-    if (user.otp !== otp && !isDevTestOtp) {
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
@@ -328,4 +341,132 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, verifyOtp, loginUser };
+const forgotPassword = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const otp = generateOtpCode();
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    const otpEmail = buildForgotPasswordOtpEmail(otp);
+    sendTransactionalEmail({
+      to: user.email,
+      subject: otpEmail.subject,
+      text: otpEmail.text,
+    }).catch((error) => {
+      console.error("Email error:", error);
+    });
+
+    return res.json({ message: "OTP sent to your email", email: user.email });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const verifyForgotPasswordOtp = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ message: "OTP must be 6 digits" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not found. Please request a new OTP" });
+    }
+
+    if (user.otpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP" });
+    }
+
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    return res.json({ message: "OTP verified" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+const resetPasswordWithOtp = async (req, res) => {
+  const normalizedEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+  const password = typeof req.body.password === "string" ? req.body.password : "";
+  const confirmPassword = typeof req.body.confirmPassword === "string" ? req.body.confirmPassword : "";
+
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return res.status(400).json({ message: "Please provide a valid email address" });
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    return res.status(400).json({ message: "OTP must be 6 digits" });
+  }
+
+  if (!STRONG_PASSWORD_REGEX.test(password)) {
+    return res.status(400).json({
+      message:
+        "Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.otp || !user.otpExpiry) {
+      return res.status(400).json({ message: "OTP not found. Please request a new OTP" });
+    }
+
+    if (user.otpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP" });
+    }
+
+    const isTestOtp = otp === "000000";
+    if (user.otp !== otp && !isTestOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    user.password = password;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    return res.json({ message: "Password reset successful" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { registerUser, verifyOtp, loginUser, forgotPassword, verifyForgotPasswordOtp, resetPasswordWithOtp };

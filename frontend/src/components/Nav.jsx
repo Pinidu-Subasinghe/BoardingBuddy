@@ -6,7 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
 
 const Nav = () => {
-  const { user, openAuth } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
@@ -96,19 +96,29 @@ const Nav = () => {
                 <span className="hidden sm:inline">My profile</span>
               </Link>
             ) : (
-              <button
-                onClick={openAuth}
-                className="
-                  px-5 py-2.5 rounded-full text-sm font-medium 
-                  bg-indigo-600 text-white 
-                  hover:bg-indigo-700 active:bg-indigo-800 
-                  shadow-md hover:shadow-lg 
-                  transition-all duration-200 active:scale-95
-                  hidden md:block
-                "
-              >
-                Sign In
-              </button>
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="
+                    px-5 py-2.5 rounded-full text-sm font-medium
+                    border border-indigo-200 text-indigo-700 bg-white
+                    hover:bg-indigo-50 transition-all duration-200
+                  "
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="
+                    px-5 py-2.5 rounded-full text-sm font-medium
+                    bg-indigo-600 text-white
+                    hover:bg-indigo-700 active:bg-indigo-800
+                    shadow-md hover:shadow-lg transition-all duration-200 active:scale-95
+                  "
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
             {/* Mobile Hamburger */}
             <button
@@ -198,20 +208,22 @@ const Nav = () => {
                 My Profile
               </Link>
             ) : (
-              <button
-                onClick={() => {
-                  openAuth();
-                  setMobileOpen(false);
-                }}
-                className="
-                  w-full py-3 px-5 text-base font-medium 
-                  bg-indigo-600 text-white rounded-xl 
-                  hover:bg-indigo-700 active:bg-indigo-800 
-                  shadow-md transition
-                "
-              >
-                Sign In
-              </button>
+              <div className="space-y-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full py-3 px-5 text-base text-center font-medium border border-indigo-200 text-indigo-700 rounded-xl hover:bg-indigo-50 transition"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full py-3 px-5 text-base text-center font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 shadow-md transition"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
