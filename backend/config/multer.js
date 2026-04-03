@@ -2,7 +2,7 @@ const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("./cloudinary");
 
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png"]);
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
 // Factory function to create storage
 const createStorage = (folderName) => {
@@ -14,7 +14,7 @@ const createStorage = (folderName) => {
       return {
         folder: folderPath,
         resource_type: "image",
-        allowed_formats: ["jpg", "png", "jpeg"],
+        allowed_formats: ["jpg", "png", "jpeg", "webp"],
         public_id: `${Date.now()}-${file.originalname}`,
       };
     },
@@ -28,7 +28,7 @@ const imageFileFilter = (req, file, cb) => {
     return;
   }
 
-  const error = new Error("Only JPG, JPEG and PNG images are allowed");
+  const error = new Error("Supported formats: JPG, JPEG, PNG, WEBP");
   error.statusCode = 400;
   cb(error);
 };
