@@ -3,7 +3,7 @@ const Wishlist = require('../models/Wishlist');
 const Boarding = require('../models/Boarding');
 
 const BOARDING_POPULATE_FIELDS =
-  'title address city monthlyRent coverImage images boardingType lifestyleTags nearestUniversities availableCapacity status owner';
+  'title address city monthlyRent coverImage images boardingType lifestyleTags nearestUniversities availableCapacity status owner createdAt';
 
 const resolveBoardingId = (req) => {
   const bodyId = typeof req.body?.boardingId === 'string' ? req.body.boardingId.trim() : '';
