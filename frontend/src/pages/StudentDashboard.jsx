@@ -6,6 +6,7 @@ import StudentBoardings from '../components/student/StudentBoardings';
 import StudentPayments from '../components/student/StudentPayments';
 import StudentReviews from '../components/student/StudentReviews';
 import StudentInquiries from '../components/student/StudentInquiries';
+import StudentWishlist from '../components/student/StudentWishlist';
 import DashboardShell from '../components/DashboardShell';
 
 const StudentDashboard = () => {
@@ -53,6 +54,8 @@ const StudentDashboard = () => {
         return <StudentProfile />;
       case 'my-boardings':
         return <StudentBoardings />;
+      case 'wishlist':
+        return <StudentWishlist />;
       case 'my-payments':
         return <StudentPayments />;
       case 'my-reviews':
@@ -67,6 +70,7 @@ const StudentDashboard = () => {
   const menuItems = [
     { key: 'profile', label: 'Profile' },
     { key: 'my-boardings', label: 'My Boardings' },
+    { key: 'wishlist', label: 'Wishlist' },
     { key: 'my-payments', label: 'My Payments' },
     { key: 'my-reviews', label: 'My Reviews' },
     { key: 'inquiries', label: 'My Inquiries' },

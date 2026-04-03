@@ -49,6 +49,9 @@ API.interceptors.response.use(
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);
 export const verifyRegistrationOtp = (data) => API.post('/auth/verify-otp', data);
+export const forgotPasswordRequest = (data) => API.post('/auth/forgot-password', data);
+export const verifyForgotPasswordOtpRequest = (data) => API.post('/auth/forgot-password/verify-otp', data);
+export const resetPasswordWithOtpRequest = (data) => API.post('/auth/forgot-password/reset', data);
 
 // User profile
 export const getProfile = () => API.get('/users/profile');
@@ -93,6 +96,11 @@ export const createCardPayment = (data) => API.post('/payments/card', data);
 export const getMyPayments = () => API.get('/payments/my');
 export const getOwnerPayments = () => API.get('/payments/owner');
 export const getPaymentById = (id) => API.get(`/payments/${id}`);
+
+// Wishlist APIs
+export const addToWishlist = (boardingId) => API.post('/wishlist', { boardingId });
+export const getMyWishlist = () => API.get('/wishlist/my');
+export const removeFromWishlist = (boardingId) => API.delete(`/wishlist/${boardingId}`);
 
 // Analytics APIs
 export const getOwnerAnalytics = () => API.get('/analytics/owner');

@@ -6,6 +6,8 @@ const { sendTransactionalEmail } = require("../utils/email");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
 const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const NAME_REGEX = /^[A-Za-z\s]+$/;
 
 const parseMaybeJson = (value) => {
   if (typeof value !== "string") return value;
@@ -219,15 +221,131 @@ const deleteUser = async (req, res) => {
 // Admin: create new user
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role, contactNumber, university, gender } = req.body;
-    if (!name || !email || !password || !contactNumber || !gender) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    const {
+      name,
+      email,
+      password,
+      confirmPassword,
+      role,
+      contactNumber,
+      university,
+      gender,
+      dob,
+      guardian,
+      paymentDetails,
+    } = req.body;
+
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const normalizedContactNumber = typeof contactNumber === "string" ? contactNumber.replace(/\D/g, "") : "";
+    const normalizedRole = role || "student";
+
+    if (!normalizedName || !normalizedEmail || !password || !confirmPassword || !normalizedContactNumber || !gender || !dob) {
+      return res.status(400).json({ message: "Required fields missing" });
     }
 
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: 'User with this email already exists' });
+    if (!NAME_REGEX.test(normalizedName)) {
+      return res.status(400).json({ message: "Name must contain only English letters" });
+    }
 
-    const user = await User.create({ name, email, password, role: role || 'student', contactNumber, university, gender });
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (!MOBILE_REGEX.test(normalizedContactNumber)) {
+      return res.status(400).json({ message: "Mobile number must be exactly 10 digits" });
+    }
+
+    if (!STRONG_PASSWORD_REGEX.test(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, and a special character (@ # $ % & *)",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    const parsedDob = new Date(dob);
+    if (Number.isNaN(parsedDob.getTime())) {
+      return res.status(400).json({ message: "Invalid date of birth" });
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    parsedDob.setHours(0, 0, 0, 0);
+    if (parsedDob > today) {
+      return res.status(400).json({ message: "Date of birth cannot be in the future" });
+    }
+
+    const exists = await User.findOne({ email: normalizedEmail });
+    if (exists) return res.status(400).json({ message: "User with this email already exists" });
+
+    let normalizedGuardian;
+    if (normalizedRole === "student") {
+      const guardianInput = parseMaybeJson(guardian);
+      const guardianName = typeof guardianInput?.name === "string" ? guardianInput.name.trim() : "";
+      const guardianPhone = typeof guardianInput?.phone === "string" ? guardianInput.phone.replace(/\D/g, "") : "";
+      const guardianType = guardianInput?.type || "Other";
+
+      if (!university) {
+        return res.status(400).json({ message: "Student university is required" });
+      }
+
+      if (!guardianName || !guardianPhone) {
+        return res.status(400).json({ message: "Guardian name and phone are required" });
+      }
+
+      if (!MOBILE_REGEX.test(guardianPhone)) {
+        return res.status(400).json({ message: "Guardian phone must be exactly 10 digits" });
+      }
+
+      normalizedGuardian = {
+        type: guardianType,
+        name: guardianName,
+        phone: guardianPhone,
+      };
+    }
+
+    let normalizedPaymentDetails;
+    if (normalizedRole === "owner") {
+      const paymentInput = parseMaybeJson(paymentDetails);
+      const accountNumber = typeof paymentInput?.accountNumber === "string" ? paymentInput.accountNumber.replace(/\D/g, "") : "";
+      const bankName = typeof paymentInput?.bankName === "string" ? paymentInput.bankName.trim() : "";
+      const branchName = typeof paymentInput?.branchName === "string" ? paymentInput.branchName.trim() : "";
+      const accountHolderName = typeof paymentInput?.accountHolderName === "string" ? paymentInput.accountHolderName.trim() : "";
+
+      if (!accountNumber || !bankName || !branchName || !accountHolderName) {
+        return res.status(400).json({ message: "Payment details are required" });
+      }
+
+      if (!ACCOUNT_NUMBER_REGEX.test(accountNumber)) {
+        return res.status(400).json({ message: "Account number must be 12 to 16 digits" });
+      }
+
+      normalizedPaymentDetails = {
+        accountNumber,
+        bankName,
+        branchName,
+        accountHolderName,
+      };
+    }
+
+    const user = await User.create({
+      name: normalizedName,
+      email: normalizedEmail,
+      password,
+      role: normalizedRole,
+      contactNumber: normalizedContactNumber,
+      university: normalizedRole === "student" ? university : undefined,
+      gender,
+      dob: parsedDob,
+      guardian: normalizedRole === "student" ? normalizedGuardian : undefined,
+      paymentDetails: normalizedRole === "owner" ? normalizedPaymentDetails : undefined,
+      isEmailVerified: true,
+      otp: undefined,
+      otpExpiry: undefined,
+    });
 
     res.status(201).json({
       _id: user._id,
@@ -235,7 +353,10 @@ const createUser = async (req, res) => {
       email: user.email,
       role: user.role,
       contactNumber: user.contactNumber,
-      university: user.university
+      university: user.university,
+      dob: user.dob,
+      guardian: user.guardian,
+      paymentDetails: user.paymentDetails,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

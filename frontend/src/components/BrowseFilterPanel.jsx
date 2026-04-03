@@ -8,8 +8,6 @@ const BrowseFilterPanel = ({
   onToggleAmenity,
   onApply,
   onReset,
-  canUseMyUniversity,
-  userUniversity,
 }) => {
   return (
     <aside className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
@@ -20,15 +18,6 @@ const BrowseFilterPanel = ({
       <div className="space-y-5">
         <section className="border border-gray-100 rounded-lg p-3 bg-gray-50">
           <h4 className="text-sm font-semibold text-gray-800 mb-2">University</h4>
-          <label className="flex items-center gap-2 text-sm text-gray-700 mb-2">
-            <input
-              type="checkbox"
-              checked={filters.nearMyUniversity}
-              onChange={(e) => onChange("nearMyUniversity", e.target.checked)}
-              disabled={!canUseMyUniversity}
-            />
-            Near my campus{userUniversity ? ` (${userUniversity})` : ''}
-          </label>
           <select
             value={filters.university}
             onChange={(e) => onChange("university", e.target.value)}

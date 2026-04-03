@@ -2,7 +2,6 @@ import React, { useContext, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 
 import { AuthProvider, AuthContext } from './context/AuthContext';
-import AuthForm from './components/AuthForm';
 import Nav from './components/Nav';
 import Home from './pages/Home';
 import Browse from './pages/Browse';
@@ -19,6 +18,9 @@ import StudentPaymentPage from './pages/StudentPaymentPage';
 import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import InspectorDashboard from './pages/InspectorDashboard';
+import LoginPage from './pages/LoginPage';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 
 
 // Floating Jump to Top Button
@@ -79,27 +81,6 @@ function RoleDashboardGuard({ children }) {
   return children;
 }
 
-
-// Auth Modal
-function AuthModal() {
-  const { showAuthModal, closeAuth } = useContext(AuthContext);
-
-  if (!showAuthModal) return null;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4"
-      onClick={closeAuth}
-      role="presentation"
-    >
-      <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <AuthForm />
-      </div>
-    </div>
-  );
-}
-
-
 // Main App
 function App() {
   return (
@@ -107,7 +88,6 @@ function App() {
       <AuthProvider>
         <RoleDashboardGuard>
           <Nav />
-          <AuthModal />
           <ScrollToTop />
           <JumpToTopButton />
 
@@ -118,6 +98,9 @@ function App() {
             <Route path="/boardings/:id/reviews" element={<BoardingReviewsPage />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
