@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { rateBoarding } from '../../api/api';
 
 const StarPicker = ({ value, onChange }) => {
@@ -28,6 +28,17 @@ const InspectorAssignedTasks = ({ boardings = [], setBoardings }) => {
   const [remark, setRemark] = useState('');
   const [overallPercentage, setOverallPercentage] = useState(0);
   const [formErrors, setFormErrors] = useState({});
+  const reviewSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      reviewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [active]);
 
   const ongoingTasks = useMemo(() => {
     return boardings.filter((boarding) => {
@@ -168,7 +179,7 @@ const InspectorAssignedTasks = ({ boardings = [], setBoardings }) => {
       )}
 
       {active && (
-        <div className="mt-10 rounded-2xl bg-white p-6 shadow-md md:p-8">
+        <div ref={reviewSectionRef} className="mt-10 rounded-2xl bg-white p-6 shadow-md md:p-8">
           <h3 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">
             Review: {active.title}
           </h3>
