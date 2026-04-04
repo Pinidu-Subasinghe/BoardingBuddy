@@ -72,20 +72,48 @@ const OwnerDashboard = () => {
         return <OwnerAnalytics />;
       case 'inquiries':
         return <OwnerInquiries />;
+      case 'reminders':
+        return <OwnerReminders />;
       default:
         return <OwnerProfile />;
     }
   };
 
   const menuItems = [
-    { key: 'profile', label: 'My Profile' },
-    { key: 'boardings', label: 'My Boardings' },
-    { key: 'visits', label: 'My Visits' },
-    { key: 'reminders', label: 'Reminders' },
-    { key: 'ongoing', label: 'Ongoing stays' },
-    { key: 'receivedPayments', label: 'Received Payments' },
-    { key: 'analytics', label: 'Analytics' },
-    { key: 'inquiries', label: 'Inquiries' },
+    {
+      key: 'profile',
+      label: 'My Profile'
+    },
+    {
+      key: 'boarding',
+      label: 'Boarding Management',
+      defaultSubKey: 'boardings',
+      subItems: [
+        { key: 'boardings', label: 'My Boardings' },
+        { key: 'ongoing', label: 'Ongoing Stays' }
+      ]
+    },
+    {
+      key: 'visitor',
+      label: 'Visitor Management',
+      defaultSubKey: 'visits',
+      subItems: [
+        { key: 'visits', label: 'My Visits' },
+        { key: 'reminders', label: 'Reminders' }
+      ]
+    },
+    {
+      key: 'receivedPayments',
+      label: 'Received Payments'
+    },
+    {
+      key: 'analytics',
+      label: 'Analytics'
+    },
+    {
+      key: 'inquiries',
+      label: 'Inquiries'
+    }
   ];
 
   return (
