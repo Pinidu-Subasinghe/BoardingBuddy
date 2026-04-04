@@ -3,12 +3,15 @@ import React from "react";
 const BrowseFilterPanel = ({
   universities = [],
   amenities = [],
+  userUniversity = "",
   filters,
   onChange,
   onToggleAmenity,
   onApply,
   onReset,
 }) => {
+  const hasSelectedUniversity = Boolean(String(filters.university || "").trim());
+
   return (
     <aside className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
@@ -21,6 +24,7 @@ const BrowseFilterPanel = ({
           <select
             value={filters.university}
             onChange={(e) => onChange("university", e.target.value)}
+            disabled={Boolean(filters.nearMyUniversity)}
             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700"
           >
             <option value="">All universities</option>
@@ -29,6 +33,41 @@ const BrowseFilterPanel = ({
                 {u.code}
               </option>
             ))}
+          </select>
+
+          <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={Boolean(filters.nearMyUniversity)}
+              onChange={(e) => onChange("nearMyUniversity", e.target.checked)}
+              disabled={!userUniversity || hasSelectedUniversity}
+            />
+            Near My Campus
+          </label>
+
+          {!userUniversity && (
+            <p className="mt-1 text-xs text-red-500">
+              Add your university in profile to use this option.
+            </p>
+          )}
+          {hasSelectedUniversity && (
+            <p className="mt-1 text-xs text-gray-500">
+              Clear the university dropdown to enable Near My Campus.
+            </p>
+          )}
+        </section>
+
+        <section className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+          <h4 className="text-sm font-semibold text-gray-800 mb-2">Boarding Category</h4>
+          <select
+            value={filters.boardingType || ""}
+            onChange={(e) => onChange("boardingType", e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700"
+          >
+            <option value="">All categories</option>
+            <option value="boys">Boys</option>
+            <option value="girls">Girls</option>
+            <option value="any">Any</option>
           </select>
         </section>
 
