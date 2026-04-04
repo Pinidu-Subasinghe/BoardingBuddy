@@ -1,6 +1,11 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const { sendTransactionalEmail } = require("../utils/email");
+const {
+  buildOtpEmail,
+  buildWelcomeEmail,
+  buildForgotPasswordOtpEmail,
+} = require("../utils/emailTemplates");
 
 // Server-side validation mirrors frontend rules to prevent bypass.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,43 +18,6 @@ const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const generateOtpCode = () => {
   return String(Math.floor(100000 + Math.random() * 900000));
 };
-
-const buildOtpEmail = (userName, otp) => ({
-  subject: "Email Verification - BoardingBuddy 🏠",
-  text:
-    `Dear ${userName},\n\n` +
-    "Your OTP code is:\n" +
-    `${otp}\n\n` +
-    "This code will expire in 5 minutes.\n\n" +
-    "Thank You,\n" +
-    "BoardingBuddy 🏠 Team",
-});
-
-const buildWelcomeEmail = (userName) => ({
-  subject: "Welcome to BoardingBuddy \ud83c\udfe0",
-  text:
-    `Dear ${userName},\n\n` +
-    "Welcome to BoardingBuddy!\n" +
-    "Your account has been successfully created.\n" +
-    "You can now explore boarding listings, manage your profile, and use our services.\n\n" +
-    "If you did not create this account, please contact support immediately.\n\n" +
-    "Thank you for choosing our platform.\n\n" +
-    "Thank You,\n" +
-    "BoardingBuddy \ud83c\udfe0 Team"
-});
-
-const buildForgotPasswordOtpEmail = (otp) => ({
-  subject: "Password Reset - BoardingBuddy 🏠",
-  text:
-    "Dear User,\n\n" +
-    "You requested to reset your password.\n\n" +
-    "Use the OTP below to continue:\n" +
-    `${otp}\n\n` +
-    "This OTP will expire in 10 minutes.\n\n" +
-    "If you did not request this, please ignore this email.\n\n" +
-    "Thank You,\n" +
-    "BoardingBuddy 🏠 Team",
-});
 
 // Register
 const registerUser = async (req, res) => {
@@ -221,8 +189,7 @@ const registerUser = async (req, res) => {
     const otpEmail = buildOtpEmail(user.name, otp);
     sendTransactionalEmail({
       to: user.email,
-      subject: otpEmail.subject,
-      text: otpEmail.text,
+      ...otpEmail,
     }).catch((error) => {
       console.error("Email error:", error);
     });
@@ -282,8 +249,7 @@ const verifyOtp = async (req, res) => {
     const welcomeEmail = buildWelcomeEmail(verifiedUser.name);
     sendTransactionalEmail({
       to: verifiedUser.email,
-      subject: welcomeEmail.subject,
-      text: welcomeEmail.text,
+      ...welcomeEmail,
     }).catch((error) => {
       console.error("Email error:", error);
     });
@@ -363,8 +329,7 @@ const forgotPassword = async (req, res) => {
     const otpEmail = buildForgotPasswordOtpEmail(otp);
     sendTransactionalEmail({
       to: user.email,
-      subject: otpEmail.subject,
-      text: otpEmail.text,
+      ...otpEmail,
     }).catch((error) => {
       console.error("Email error:", error);
     });
