@@ -60,11 +60,11 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
         onSubmit={onCreate}
       />
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-4 shadow-sm flex flex-col gap-3 sm:flex-row sm:items-end">
         {currentUser && (currentUser.role === 'admin' || currentUser.role === 'inspector') && (
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow"
+            className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl shadow-sm font-semibold hover:bg-indigo-700 transition-colors"
           >
             Create new user
           </button>
@@ -78,7 +78,7 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
             id="admin-user-role-filter"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="mt-1 px-3 py-2 border rounded-md text-sm bg-white"
+            className="mt-1 h-11 px-3 py-2 border border-indigo-200 rounded-xl text-sm bg-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
             <option value="all">All Users</option>
             <option value="student">Students</option>
@@ -192,7 +192,7 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
                                   });
                                 }
                               }}
-                              className="px-2 py-1 border rounded text-sm"
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                             >
                               <option value="student">Student</option>
                               <option value="owner">Owner</option>
@@ -221,7 +221,7 @@ const AdminUserManagement = ({ users, currentUser, onCreate, onChangeRole, onDel
                                   });
                                 }
                               }}
-                              className="px-2 py-1 rounded text-sm text-red-600 hover:bg-red-50"
+                              className="px-2.5 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
                               aria-label="Delete user"
                             >
                               🗑️

@@ -147,14 +147,17 @@ const AdminInquiries = () => {
   if (loading) return <LoadingAnimation text="Loading Inquiries..." />;
 
   return (
-    <div>
-      <div className="mb-4">
-        <h3 className="text-2xl font-bold">Inquiries</h3>
-        <p className="text-sm text-gray-500">Manage user inquiries and actions</p>
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-sm">
+        <h3 className="text-2xl font-bold text-gray-900">Inquiries</h3>
+        <p className="text-sm text-gray-600 mt-1">Manage user inquiries and admin actions from one place.</p>
       </div>
 
       {!hasInquiries ? (
-        <p>No inquiries submitted yet.</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+          <p className="text-lg text-gray-700 font-medium">No inquiries submitted yet.</p>
+          <p className="mt-1 text-sm text-gray-500">New inquiries will appear here once users submit them.</p>
+        </div>
       ) : (
         <div className="space-y-4">
           {inquiries.map((inquiry) => {
@@ -165,10 +168,10 @@ const AdminInquiries = () => {
             const hasBoarding = Boolean(inquiry.boardingId);
 
             return (
-              <div key={inquiry._id} className="rounded-xl bg-white p-4 shadow">
+              <div key={inquiry._id} className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-900">{inquiry.title}</h4>
+                    <h4 className="text-lg font-semibold text-gray-900 tracking-tight">{inquiry.title}</h4>
                     <p className="text-xs text-gray-500 mt-1">
                       Submitted by <span className="font-medium text-gray-700">{userName}</span>
                       {' '}({userRole}) · {formatDate(inquiry.createdAt)}
@@ -179,7 +182,7 @@ const AdminInquiries = () => {
                     <button
                       type="button"
                       onClick={() => handleDelete(inquiry._id)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-red-600"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                       aria-label="Delete inquiry"
                     >
                       <svg
@@ -218,13 +221,13 @@ const AdminInquiries = () => {
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-                  <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="rounded-xl border border-gray-200 p-3 bg-gray-50/40 hover:bg-gray-50 transition-colors">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Update Status</p>
                     <div className="flex items-center gap-2">
                       <select
                         value={draft.status || 'Pending'}
                         onChange={(event) => setDraft(inquiry._id, { status: event.target.value })}
-                        className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                        className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                       >
                         {STATUS_OPTIONS.map((opt) => (
                           <option key={opt} value={opt}>
@@ -235,7 +238,7 @@ const AdminInquiries = () => {
                       <button
                         type="button"
                         onClick={() => handleStatusSave(inquiry._id)}
-                        className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                        className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
                         disabled={saving[inquiry._id]?.status}
                       >
                         Save
@@ -243,19 +246,19 @@ const AdminInquiries = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-gray-200 p-3">
+                  <div className="rounded-xl border border-gray-200 p-3 bg-gray-50/40 hover:bg-gray-50 transition-colors">
                     <p className="text-xs font-semibold text-gray-500 mb-2">Admin Response</p>
                     <textarea
                       value={draft.response || ''}
                       onChange={(event) => setDraft(inquiry._id, { response: event.target.value })}
                       rows={3}
-                      className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                       placeholder="Type a response"
                     />
                     <button
                       type="button"
                       onClick={() => handleResponseSave(inquiry._id)}
-                      className="mt-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700"
+                      className="mt-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
                       disabled={saving[inquiry._id]?.response}
                     >
                       Save Response
@@ -263,13 +266,13 @@ const AdminInquiries = () => {
                   </div>
 
                   {hasBoarding && (
-                    <div className="rounded-lg border border-gray-200 p-3">
+                    <div className="rounded-xl border border-gray-200 p-3 bg-gray-50/40 hover:bg-gray-50 transition-colors">
                       <p className="text-xs font-semibold text-gray-500 mb-2">Apply Penalty</p>
                       <div className="flex flex-wrap items-center gap-2">
                         <select
                           value={draft.points}
                           onChange={(event) => setDraft(inquiry._id, { points: Number(event.target.value) })}
-                          className="w-28 rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          className="w-28 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                         >
                           {[0, 1, 2, 3, 4, 5].map((val) => (
                             <option key={val} value={val}>
@@ -280,7 +283,7 @@ const AdminInquiries = () => {
                         <button
                           type="button"
                           onClick={() => handlePenalty(inquiry._id)}
-                          className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+                          className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition-colors"
                           disabled={saving[inquiry._id]?.penalty}
                         >
                           Apply
@@ -291,7 +294,7 @@ const AdminInquiries = () => {
                           value={draft.penaltyNote || ''}
                           onChange={(event) => setDraft(inquiry._id, { penaltyNote: event.target.value })}
                           rows={2}
-                          className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                           placeholder="Penalty note (optional)"
                         />
                       </div>
@@ -300,7 +303,7 @@ const AdminInquiries = () => {
                           value={draft.ownerWarningMessage || ''}
                           onChange={(event) => setDraft(inquiry._id, { ownerWarningMessage: event.target.value })}
                           rows={2}
-                          className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+                          className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                           placeholder="Message to property owner (optional)"
                         />
                       </div>

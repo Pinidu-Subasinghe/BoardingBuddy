@@ -88,19 +88,23 @@ const MyInquiries = () => {
   };
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-2xl font-bold">My Inquiries</h3>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">My Inquiries</h3>
+            <p className="text-sm text-gray-600 mt-1">Track inquiries, status updates, and responses in one place.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
           {isSelectableView && (
-            <div className="flex items-center rounded-lg border border-gray-200 p-1">
+            <div className="flex items-center rounded-xl border border-indigo-200 bg-white p-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
                 aria-label="List view"
                 title="List view"
                 className={`px-3 py-1 text-sm rounded-md ${
-                  viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                  viewMode === 'list' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-700'
                 }`}
               >
                 <i className="bi bi-list-ul" aria-hidden="true" />
@@ -111,7 +115,7 @@ const MyInquiries = () => {
                 aria-label="Grid view"
                 title="Grid view"
                 className={`px-3 py-1 text-sm rounded-md ${
-                  viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                  viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-700'
                 }`}
               >
                 <i className="bi bi-grid-3x3-gap" aria-hidden="true" />
@@ -121,19 +125,20 @@ const MyInquiries = () => {
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 shadow-sm transition-colors"
           >
             Add Inquiry
           </button>
+          </div>
         </div>
       </div>
 
       {isOwner ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
             <h4 className="text-lg font-semibold text-gray-900 mb-3">Admin Warnings</h4>
             {ownerWarnings.length === 0 ? (
-              <p>No admin warnings yet.</p>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">No admin warnings yet.</div>
             ) : (
               <div className={listClass}>
                 {ownerWarnings.map((inquiry) => (
@@ -147,10 +152,10 @@ const MyInquiries = () => {
               </div>
             )}
           </div>
-          <div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
             <h4 className="text-lg font-semibold text-gray-900 mb-3">My Inquiries</h4>
             {ownInquiries.length === 0 ? (
-              <p>No inquiries yet.</p>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">No inquiries yet.</div>
             ) : (
               <div className={listClass}>
                 {ownInquiries.map((inquiry) => (
@@ -161,7 +166,10 @@ const MyInquiries = () => {
           </div>
         </div>
       ) : ownInquiries.length === 0 ? (
-        <p>No inquiries yet.</p>
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-lg font-medium text-gray-700">No inquiries yet.</p>
+          <p className="text-sm text-gray-500 mt-1">Use Add Inquiry to report an issue or request support.</p>
+        </div>
       ) : (
         <div className={listClass}>
           {ownInquiries.map((inquiry) => (
