@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import universities from '../data/universities.json';
@@ -10,24 +10,6 @@ const MOBILE_REGEX = /^0\d{9}$/;
 const NAME_REGEX = /^[A-Za-z\s]+$/;
 const TEN_DIGIT_REGEX = /^\d{10}$/;
 const ACCOUNT_NUMBER_REGEX = /^\d{12,16}$/;
-
-const BANK_OPTIONS = [
-  'Amana Bank PLC',
-  'Bank of Ceylon (BOC)',
-  'Cargills Bank Limited',
-  'Commercial Bank of Ceylon PLC',
-  'DFCC Bank PLC',
-  'Hatton National Bank PLC (HNB)',
-  'HSBC (Hongkong and Shanghai Banking Corporation)',
-  'National Development Bank PLC (NDB)',
-  'Nations Trust Bank PLC (NTB)',
-  'Pan Asia Banking Corporation PLC',
-  "People's Bank",
-  'Sampath Bank PLC',
-  'Seylan Bank PLC',
-  'Standard Chartered Bank',
-  'Union Bank of Colombo PLC'
-];
 
 const toDateInputMax = () => new Date().toISOString().split('T')[0];
 
@@ -62,6 +44,7 @@ const AuthForm = ({ initialMode = 'login' }) => {
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [bankOptions, setBankOptions] = useState([]);
   const otpInputRefs = useRef([]);
 
   const [formData, setFormData] = useState({
@@ -84,6 +67,32 @@ const AuthForm = ({ initialMode = 'login' }) => {
   });
 
   const universityOptions = useMemo(() => Object.entries(universities), []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBankOptions = async () => {
+      try {
+        const response = await fetch('/data/bank-options.json');
+        if (!response.ok) {
+          throw new Error(`Failed to load bank options: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!active) return;
+        setBankOptions(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error loading bank options', error);
+        if (active) setBankOptions([]);
+      }
+    };
+
+    loadBankOptions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const navigateByRole = (role) => {
     switch (role) {
@@ -541,7 +550,7 @@ const AuthForm = ({ initialMode = 'login' }) => {
                     <div>
                       <select name="paymentBankName" value={formData.paymentBankName} onChange={handleChange} className={inputClass(errors.paymentBankName)}>
                         <option value="" disabled>Select bank</option>
-                        {BANK_OPTIONS.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
+                        {bankOptions.map((bank) => <option key={bank} value={bank}>{bank}</option>)}
                       </select>
                       {errors.paymentBankName && <p className="text-xs text-red-500 mt-1">{errors.paymentBankName}</p>}
                     </div>
