@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
-import { FiFileText } from 'react-icons/fi';
+import { FiChevronDown, FiFileText } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getInspectorRatings } from '../../api/api';
@@ -9,19 +9,52 @@ import { formatDateTime } from '../../utils/date';
 const InspectorReviewedTasks = ({ boardings = [], user }) => {
   const [ratingsByBoarding, setRatingsByBoarding] = useState({});
   const [loadingRatings, setLoadingRatings] = useState(true);
+  const [sortOption, setSortOption] = useState('newest-reviewed');
 
   const reviewedTasks = useMemo(() => {
     return boardings
       .filter((boarding) => {
         const status = String(boarding?.status || '').toLowerCase();
         return status === 'approved' || status === 'rejected';
-      })
-      .sort((a, b) => {
-        const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-        const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-        return bTime - aTime;
       });
   }, [boardings]);
+
+  const sortedReviewedTasks = useMemo(() => {
+    const getReviewedTime = (task) => {
+      const rating = ratingsByBoarding[String(task?._id)];
+      return new Date(rating?.createdAt || task?.updatedAt || task?.createdAt || 0).getTime();
+    };
+
+    const getStatusPriority = (task) => {
+      const status = String(task?.status || '').toLowerCase();
+      return status === 'approved' ? 0 : 1;
+    };
+
+    const getSafetyPriority = (task) => {
+      const rating = ratingsByBoarding[String(task?._id)];
+      const safety = String(rating?.safetyBadge || '').toLowerCase();
+      if (safety === 'high') return 0;
+      if (safety === 'medium') return 1;
+      if (safety === 'low') return 2;
+      return 3;
+    };
+
+    return [...reviewedTasks].sort((a, b) => {
+      if (sortOption === 'status-approved-first') {
+        const statusDiff = getStatusPriority(a) - getStatusPriority(b);
+        if (statusDiff !== 0) return statusDiff;
+        return getReviewedTime(b) - getReviewedTime(a);
+      }
+
+      if (sortOption === 'safety-high-first') {
+        const safetyDiff = getSafetyPriority(a) - getSafetyPriority(b);
+        if (safetyDiff !== 0) return safetyDiff;
+        return getReviewedTime(b) - getReviewedTime(a);
+      }
+
+      return getReviewedTime(b) - getReviewedTime(a);
+    });
+  }, [reviewedTasks, ratingsByBoarding, sortOption]);
 
   useEffect(() => {
     const fetchRatingHistory = async () => {
@@ -66,7 +99,7 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
   }, [reviewedTasks, user]);
 
   const handleDownloadPdf = () => {
-    if (!reviewedTasks.length) {
+    if (!sortedReviewedTasks.length) {
       Swal.fire({
         title: 'No reviewed tasks to export',
         icon: 'info',
@@ -102,7 +135,7 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
       doc.text(`Generated: ${formatDateTime(new Date())}`, pageWidth - 210, 28);
       doc.text(`Inspector: ${user?.name || 'Inspector'}`, pageWidth - 210, 44);
 
-      const bodyRows = reviewedTasks.map((task, index) => {
+      const bodyRows = sortedReviewedTasks.map((task, index) => {
         const status = String(task?.status || '').toLowerCase();
         const rating = ratingsByBoarding[String(task._id)];
         const lifestyleDetails =
@@ -205,19 +238,50 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
         <p className="text-sm text-gray-500">Task history after inspection completion</p>
       </div>
 
-      <div className="mb-6 flex justify-end">
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          disabled={loadingRatings || reviewedTasks.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <FiFileText className="text-base" aria-hidden="true" />
-          Download PDF Report
-        </button>
+      <div className="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-gray-600">
+            <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+              {sortedReviewedTasks.length}
+            </span>{' '}
+            reviewed task{sortedReviewedTasks.length === 1 ? '' : 's'}
+          </p>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label htmlFor="reviewed-task-sort" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Sort by
+            </label>
+            <div className="relative">
+              <select
+                id="reviewed-task-sort"
+                value={sortOption}
+                onChange={(event) => setSortOption(event.target.value)}
+                className="h-10 min-w-[250px] appearance-none rounded-xl border border-indigo-200 bg-white/90 py-2 pl-3 pr-10 text-sm font-medium text-gray-700 shadow-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              >
+                <option value="newest-reviewed">Date &amp; Time (Newest Reviewed First)</option>
+                <option value="status-approved-first">Status (Approved First)</option>
+                <option value="safety-high-first">Safety Badge (High First)</option>
+              </select>
+              <FiChevronDown
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                aria-hidden="true"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={loadingRatings || sortedReviewedTasks.length === 0}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FiFileText className="text-base" aria-hidden="true" />
+              Download PDF Report
+            </button>
+          </div>
+        </div>
       </div>
 
-      {reviewedTasks.length === 0 ? (
+      {sortedReviewedTasks.length === 0 ? (
         <div className="rounded-xl bg-white p-8 text-center shadow-sm">
           <p className="text-lg text-gray-600">No reviewed tasks yet.</p>
         </div>
@@ -236,7 +300,7 @@ const InspectorReviewedTasks = ({ boardings = [], user }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {reviewedTasks.map((task) => {
+                {sortedReviewedTasks.map((task) => {
                   const status = String(task?.status || '').toLowerCase();
                   const rating = ratingsByBoarding[String(task._id)];
                   const safety = String(rating?.safetyBadge || '').toLowerCase();

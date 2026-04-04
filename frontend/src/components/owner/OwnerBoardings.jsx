@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import Swal from 'sweetalert2';
+import { useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding, deleteBoarding as apiDeleteBoarding } from '../../api/api';
+import { addBoarding as apiAddBoarding, getBoardings as apiGetBoardings, updateBoarding as apiUpdateBoarding } from '../../api/api';
 import OwnerBoardingCard from './OwnerBoardingCard';
 import OwnerAddBoarding from './OwnerAddBoarding';
 import OwnerUpdateBoarding from './OwnerUpdateBoarding';
@@ -10,6 +11,7 @@ import LoadingAnimation from '../LoadingAnimation';
 
 const OwnerBoardings = () => {
   const { user } = useContext(AuthContext);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [boardings, setBoardings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +35,17 @@ const OwnerBoardings = () => {
       try {
         const res = await apiGetBoardings();
         setBoardings(res.data || []);
+        
+        // Check for edit query param after boardings load
+        const editId = searchParams.get('edit');
+        if (editId && res.data) {
+          const boardingToEdit = res.data.find(b => b._id === editId);
+          if (boardingToEdit) {
+            setEditingBoarding(boardingToEdit);
+            // Clear the query param
+            setSearchParams({}, { replace: true });
+          }
+        }
       } catch (err) {
         console.error('Error fetching boardings:', err);
       } finally {
@@ -41,7 +54,7 @@ const OwnerBoardings = () => {
     };
 
     fetchBoardings();
-  }, [user]);
+  }, [user, searchParams, setSearchParams]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -102,34 +115,7 @@ const OwnerBoardings = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const result = await Swal.fire({
-      title: 'Delete this boarding?',
-      text: 'This action cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#dc2626',
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await apiDeleteBoarding(id);
-      setBoardings(prev => prev.filter(b => b._id !== id));
-      await Swal.fire({
-        title: 'Deleted',
-        text: 'Boarding deleted successfully.',
-        icon: 'success',
-        draggable: true,
-      });
-    } catch (err) {
-      console.error('Error deleting boarding:', err);
-      alert(err.response?.data?.message || 'Error deleting boarding');
-    }
-  };
+  
 
   const handleUpdate = async (id, payload) => {
     try {
@@ -238,8 +224,6 @@ const OwnerBoardings = () => {
               <OwnerBoardingCard
                 key={boarding._id}
                 boarding={boarding}
-                onEdit={() => setEditingBoarding(boarding)}
-                onDelete={() => handleDelete(boarding._id)}
               />
             ))}
           </div>
