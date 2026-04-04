@@ -240,20 +240,25 @@ const AdminReviewModeration = () => {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div className="flex flex-col gap-3 pr-14 sm:pr-16 md:pr-20 lg:pr-24 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-          Review Moderation
-        </h3>
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-sm">
+        <div className="flex flex-col gap-3 pr-14 sm:pr-16 md:pr-20 lg:pr-24 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              Review Moderation
+            </h3>
+            <p className="mt-1 text-sm text-gray-600">Monitor review quality and remove harmful feedback when needed.</p>
+          </div>
 
-        <button
-          type="button"
-          onClick={handleDownloadReport}
-          disabled={loading || sortedReviews.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <FiDownload className="text-base" aria-hidden="true" />
-          Download Excel Report
-        </button>
+          <button
+            type="button"
+            onClick={handleDownloadReport}
+            disabled={loading || sortedReviews.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <FiDownload className="text-base" aria-hidden="true" />
+            Download Excel Report
+          </button>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-4 shadow-sm">

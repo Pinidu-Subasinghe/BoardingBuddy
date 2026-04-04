@@ -56,13 +56,13 @@ const InquiryFormModal = ({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl sm:p-6">
+      <div className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Add Inquiry</h3>
+          <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Add Inquiry</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
             aria-label="Close"
           >
             ✕
@@ -75,7 +75,7 @@ const InquiryFormModal = ({
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+              className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               placeholder="Enter inquiry title"
             />
             {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
@@ -87,7 +87,7 @@ const InquiryFormModal = ({
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="">Select category</option>
                 <option value="Property Issue">Property Issue</option>
@@ -106,7 +106,7 @@ const InquiryFormModal = ({
               <select
                 value={boardingId}
                 onChange={(event) => setBoardingId(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                 disabled={loadingBoardings}
               >
                 <option value="">Select boarding</option>
@@ -127,7 +127,7 @@ const InquiryFormModal = ({
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-200"
+              className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               rows={4}
               placeholder="Describe the issue"
             />
@@ -140,13 +140,13 @@ const InquiryFormModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:w-auto"
+              className="w-full rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors sm:w-auto"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 sm:w-auto"
+              className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 shadow-sm transition-colors sm:w-auto"
             >
               Send to Admin
             </button>

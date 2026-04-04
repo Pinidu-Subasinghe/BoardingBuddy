@@ -149,9 +149,12 @@ const AdminProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-2 px-1 sm:px-2 lg:px-4">
       <div className="mx-auto max-w-3xl">
-        <h3 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">My Profile</h3>
+        <div className="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-sm">
+          <h3 className="text-3xl font-bold text-gray-900 tracking-tight">My Profile</h3>
+          <p className="mt-1 text-sm text-gray-600">Manage your account information and security settings.</p>
+        </div>
 
         <div className="mb-6 flex flex-col items-center">
           <div className="relative">
@@ -268,7 +271,8 @@ const AdminProfile = () => {
 
         <div className="mt-8 bg-white shadow-lg shadow-gray-200/60 rounded-2xl overflow-hidden border border-gray-100">
           <div className="px-6 py-7 sm:p-8">
-            <h4 className="text-xl font-semibold text-gray-900 mb-5">Change Password</h4>
+            <h4 className="text-xl font-semibold text-gray-900 mb-2">Change Password</h4>
+            <p className="text-sm text-gray-500 mb-5">Use a strong password with uppercase, lowercase, and special characters.</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { placeholder: 'Current password', key: 'current' },
