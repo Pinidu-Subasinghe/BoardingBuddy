@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
   getBoarding,
@@ -14,13 +14,32 @@ import { formatDate } from "../../utils/date";
 const OwnerBoardingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [boarding, setBoarding] = useState(null);
+  const location = useLocation();
+  const [boarding, setBoarding] = useState(location.state?.boarding || null);
   const [rating, setRating] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!location.state?.boarding);
 
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
+    // If boarding data was passed via navigation state, use it
+    if (location.state?.boarding) {
+      setBoarding(location.state.boarding);
+      setLoading(false);
+      // Still fetch ratings if available
+      const fetchRatings = async () => {
+        try {
+          const r = await getInspectorRatings({ boardingId: id });
+          setRating((r.data && r.data[0]) || null);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchRatings();
+      return;
+    }
+
+    // Otherwise fetch from API (for direct URL access)
     const fetch = async () => {
       try {
         const res = await getBoarding(id);
@@ -34,7 +53,7 @@ const OwnerBoardingDetails = () => {
       }
     };
     fetch();
-  }, [id]);
+  }, [id, location.state]);
 
   // Determine status display
   const getStatusDisplay = () => {
