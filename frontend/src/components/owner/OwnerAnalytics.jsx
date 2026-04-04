@@ -45,6 +45,113 @@ const OwnerAnalytics = () => {
     fetchAnalytics();
   }, [user]);
 
+  const exportAnalyticsPDF = async () => {
+    try {
+      const jspdfModule = await import('jspdf');
+      const jsPDF = jspdfModule.jsPDF || jspdfModule.default || jspdfModule;
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = autoTableModule && (autoTableModule.default || autoTableModule);
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const marginLeft = 40;
+      const generatedAt = new Date();
+
+      doc.setFontSize(18);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Owner Analytics Report', marginLeft, 40);
+
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.text(`Generated: ${formatDate(generatedAt)} ${generatedAt.toLocaleTimeString()}`, marginLeft, 60);
+
+      const statsHead = [['Metric', 'Value']];
+      const statsBody = [
+        ['Total Boardings', analytics.totalBoardings ?? 0],
+        ['Student Visits', analytics.totalVisits ?? 0],
+        ['Average Rating', `${Number(analytics.averageRating || 0).toFixed(1)}%`],
+        ['Occupancy Rate', `${Number(analytics.occupancyRate || 0).toFixed(1)}%`],
+        ['Total Capacity', analytics.totalCapacity ?? 0],
+        ['Occupied Slots', analytics.occupiedSlots ?? 0],
+        ['Active Stays', analytics.activeStays ?? 0],
+      ];
+
+      const startY = 80;
+
+      if (typeof autoTable === 'function') {
+        autoTable(doc, { head: statsHead, body: statsBody, startY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+      } else if (typeof doc.autoTable === 'function') {
+        doc.autoTable({ head: statsHead, body: statsBody, startY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+      } else {
+        throw new Error('jspdf-autotable not found');
+      }
+
+      let currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : startY + 40;
+
+      // Booking status breakdown
+      const statusMap = analytics.bookingStatusBreakdown || {};
+      const statusHead = [['Status', 'Count']];
+      const statusBody = [
+        ['Requested', statusMap.requested || 0],
+        ['Visit Completed', statusMap.visit_completed || 0],
+        ['Active Stays', statusMap.student_stayed || analytics.activeStays || 0],
+        ['Closed', statusMap.closed || 0],
+        ['Left', statusMap.left || 0],
+      ];
+
+      if (typeof autoTable === 'function') {
+        autoTable(doc, { head: statusHead, body: statusBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+      } else {
+        doc.autoTable({ head: statusHead, body: statusBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+      }
+
+      currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : currentY + 80;
+
+      // Monthly visit trend
+      const trend = analytics.monthlyVisitTrend || [];
+      if (trend.length > 0) {
+        const trendHead = [['Month', 'Visits']];
+        const trendBody = trend.map((t) => [t.month || '—', String(t.count || 0)]);
+        if (typeof autoTable === 'function') {
+          autoTable(doc, { head: trendHead, body: trendBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        } else {
+          doc.autoTable({ head: trendHead, body: trendBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        }
+        currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : currentY + 80;
+      }
+
+      // Top boardings by occupancy
+      const top = analytics.topBoardingsByOccupancy || [];
+      if (top.length > 0) {
+        const topHead = [['Title', 'City', 'Occupied', 'Capacity', 'Occupancy %']];
+        const topBody = top.map((b) => [b.title || '—', b.city || '—', String(b.occupiedSlots || 0), String(b.totalCapacity || 0), `${Number(b.occupancyRate || 0).toFixed(1)}%`]);
+        if (typeof autoTable === 'function') {
+          autoTable(doc, { head: topHead, body: topBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        } else {
+          doc.autoTable({ head: topHead, body: topBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        }
+        currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : currentY + 80;
+      }
+
+      // Recent bookings
+      const recent = analytics.recentBookings || [];
+      if (recent.length > 0) {
+        const recentHead = [['Boarding', 'Student', 'Status', 'Requested']];
+        const recentBody = recent.map((r) => [r.boardingTitle || '—', r.studentName || '—', r.status || '—', formatDate(r.requestedAt || r.createdAt)]);
+        if (typeof autoTable === 'function') {
+          autoTable(doc, { head: recentHead, body: recentBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        } else {
+          doc.autoTable({ head: recentHead, body: recentBody, startY: currentY, styles: { fontSize: 10 }, margin: { left: marginLeft, right: 40 } });
+        }
+      }
+
+      const filename = `owner-analytics-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+      doc.save(filename);
+    } catch (err) {
+      console.error('Error generating analytics PDF', err);
+      alert('Install `jspdf` and `jspdf-autotable` to enable direct PDF exports: `npm install jspdf jspdf-autotable`');
+    }
+  };
+
   if (loading) {
     return <LoadingAnimation text="Loading analytics..." />;
   }
@@ -72,7 +179,12 @@ const OwnerAnalytics = () => {
 
   return (
     <div className="p-8">
-      <h3 className="text-2xl font-bold mb-6">Analytics</h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold">Analytics</h3>
+        <div>
+          <button onClick={exportAnalyticsPDF} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors">Export as PDF</button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white shadow-md rounded-lg p-6 text-center">
