@@ -7,16 +7,16 @@ const InquiryCard = ({ inquiry, isAdminWarning, onDelete }) => {
     inquiry.ownerWarningMessage || inquiry.penaltyNote || inquiry.adminResponse || '';
 
   return (
-    <div className="bg-white p-4 rounded shadow">
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {isAdminWarning ? (
-            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">
               ⚠️ Admin Warning
             </span>
           ) : (
             <>
-              <h4 className="font-semibold text-gray-900">{inquiry.title}</h4>
+              <h4 className="font-semibold text-gray-900 tracking-tight">{inquiry.title}</h4>
               {inquiry.category && (
                 <p className="text-xs text-gray-500 mt-1">
                   Category: <span className="font-medium text-gray-700">{inquiry.category}</span>
@@ -30,7 +30,7 @@ const InquiryCard = ({ inquiry, isAdminWarning, onDelete }) => {
           <button
             type="button"
             onClick={() => onDelete?.(inquiry)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-red-600"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
             aria-label="Delete inquiry"
           >
             <svg
@@ -63,7 +63,7 @@ const InquiryCard = ({ inquiry, isAdminWarning, onDelete }) => {
       </p>
 
       {!isAdminWarning && inquiry.adminResponse && (
-        <div className="mt-4 rounded-lg bg-gray-50 p-3">
+        <div className="mt-4 rounded-lg bg-gray-50 p-3 border border-gray-200">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Admin Response
           </p>
@@ -74,7 +74,7 @@ const InquiryCard = ({ inquiry, isAdminWarning, onDelete }) => {
       )}
 
       {isAdminWarning && (
-        <div className="mt-4 rounded-lg bg-red-50 p-3">
+        <div className="mt-4 rounded-lg bg-red-50 p-3 border border-red-200">
           <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
             Admin Warning
           </p>

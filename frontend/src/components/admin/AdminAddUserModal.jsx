@@ -76,7 +76,7 @@ const AdminAddUserModal = ({ open, onClose, onSubmit }) => {
 
   const universityOptions = useMemo(() => Object.entries(universities), []);
 
-  const inputClass = (hasError) => `w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`;
+  const inputClass = (hasError) => `w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 ${hasError ? 'border-red-500 bg-red-50/30' : 'border-gray-300 bg-white'}`;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -300,17 +300,19 @@ const AdminAddUserModal = ({ open, onClose, onSubmit }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative animate-fadeIn max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative animate-fadeIn max-h-[90vh] overflow-y-auto border border-gray-200">
         <button
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-lg"
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-lg h-8 w-8 rounded-full hover:bg-gray-100 transition-colors"
           onClick={onClose}
           aria-label="Close add user modal"
         >
           X
         </button>
 
-        <h2 className="text-xl font-semibold mb-1 text-gray-800">Add New User</h2>
-        <p className="text-sm text-gray-600 mb-4">Use the same details required in signup to create a complete account.</p>
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-4">
+          <h2 className="text-xl font-semibold mb-1 text-gray-800">Add New User</h2>
+          <p className="text-sm text-gray-600">Use the same details required in signup to create a complete account.</p>
+        </div>
 
         {error && <div className="text-red-600 text-sm mb-3 text-center">{error}</div>}
 

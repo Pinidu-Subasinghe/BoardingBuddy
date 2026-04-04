@@ -38,6 +38,7 @@ const EMPTY_DETAILS = {
 const rangeLabelMap = {
   '7d': 'Last 7 days',
   '30d': 'Last 30 days',
+  any: 'Any time',
   custom: 'Custom range',
 };
 
@@ -100,6 +101,10 @@ const AdminAnalytics = () => {
     if (appliedFilters.range === 'custom') {
       params.startDate = appliedFilters.startDate;
       params.endDate = appliedFilters.endDate;
+    } else if (appliedFilters.range === 'any') {
+      params.range = 'custom';
+      params.startDate = '1970-01-01';
+      params.endDate = new Date().toISOString().split('T')[0];
     }
 
     return params;
@@ -421,11 +426,14 @@ const AdminAnalytics = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900">Analytics & Reports</h3>
-            <p className="text-sm text-gray-500 mt-1">Comprehensive admin analytics with advanced reporting exports.</p>
+            <div className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 mb-3">
+              Admin Insights
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Analytics & Reports</h3>
+            <p className="text-sm text-gray-600 mt-1">Comprehensive admin analytics with advanced reporting exports.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto">
@@ -439,10 +447,11 @@ const AdminAnalytics = () => {
                     range: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
+                <option value="any">Any time</option>
                 <option value="custom">Custom range</option>
               </select>
             </div>
@@ -452,7 +461,7 @@ const AdminAnalytics = () => {
               <select
                 value={filters.role}
                 onChange={(e) => setFilters((prev) => ({ ...prev, role: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="all">All</option>
                 <option value="student">Students</option>
@@ -467,7 +476,7 @@ const AdminAnalytics = () => {
                 value={filters.startDate}
                 onChange={(e) => setFilters((prev) => ({ ...prev, startDate: e.target.value }))}
                 disabled={filters.range !== 'custom'}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm disabled:bg-gray-100"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm disabled:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
 
@@ -478,7 +487,7 @@ const AdminAnalytics = () => {
                 value={filters.endDate}
                 onChange={(e) => setFilters((prev) => ({ ...prev, endDate: e.target.value }))}
                 disabled={filters.range !== 'custom'}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm disabled:bg-gray-100"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm disabled:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
           </div>
@@ -488,7 +497,7 @@ const AdminAnalytics = () => {
           <button
             type="button"
             onClick={handleApplyFilters}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
           >
             Apply Filters
           </button>
@@ -496,7 +505,7 @@ const AdminAnalytics = () => {
             type="button"
             onClick={exportPDF}
             disabled={!hasReportRows || downloading}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             Download PDF
           </button>
@@ -504,7 +513,7 @@ const AdminAnalytics = () => {
             type="button"
             onClick={exportExcel}
             disabled={!hasReportRows || downloading}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             Download Excel
           </button>
@@ -512,7 +521,7 @@ const AdminAnalytics = () => {
             type="button"
             onClick={exportFilteredData}
             disabled={!hasReportRows || downloading}
-            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             Export Filtered Data
           </button>
