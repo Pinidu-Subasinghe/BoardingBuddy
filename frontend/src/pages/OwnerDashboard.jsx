@@ -7,6 +7,7 @@ import OwnerVisits from '../components/owner/OwnerVisits';
 import OwnerAnalytics from '../components/owner/OwnerAnalytics';
 import OwnerOngoingStays from '../components/owner/OwnerOngoingStays';
 import OwnerInquiries from '../components/owner/OwnerInquiries';
+import OwnerReminders from '../components/owner/OwnerReminders';
 import DashboardShell from '../components/DashboardShell';
 
 const OwnerDashboard = () => {
@@ -57,6 +58,8 @@ const OwnerDashboard = () => {
         return <OwnerAnalytics />;
       case 'inquiries':
         return <OwnerInquiries />;
+      case 'reminders':
+        return <OwnerReminders />;
       default:
         return <OwnerProfile />;
     }
