@@ -1,4 +1,5 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import OwnerProfile from '../components/owner/OwnerProfile';
 import OwnerBoardings from '../components/owner/OwnerBoardings';
@@ -7,11 +8,23 @@ import OwnerVisits from '../components/owner/OwnerVisits';
 import OwnerAnalytics from '../components/owner/OwnerAnalytics';
 import OwnerOngoingStays from '../components/owner/OwnerOngoingStays';
 import OwnerInquiries from '../components/owner/OwnerInquiries';
+import OwnerReminders from '../components/owner/OwnerReminders';
 import DashboardShell from '../components/DashboardShell';
 
 const OwnerDashboard = () => {
   const { user, logout } = useContext(AuthContext);
-  const [activeMenu, setActiveMenu] = useState('profile');
+  const location = useLocation();
+  const [activeMenu, setActiveMenu] = useState(() => {
+    // Read from navigation state if available
+    return location.state?.activeMenu || 'profile';
+  });
+
+  // Update activeMenu when location state changes
+  useEffect(() => {
+    if (location.state?.activeMenu) {
+      setActiveMenu(location.state.activeMenu);
+    }
+  }, [location.state]);
 
   // Prevent scrolling when access denied
   React.useEffect(() => {
@@ -43,6 +56,8 @@ const OwnerDashboard = () => {
 
   const renderContent = () => {
     switch (activeMenu) {
+      case 'reminders':
+        return <OwnerReminders />;
       case 'profile':
         return <OwnerProfile />;
       case 'boardings':
@@ -66,6 +81,7 @@ const OwnerDashboard = () => {
     { key: 'profile', label: 'My Profile' },
     { key: 'boardings', label: 'My Boardings' },
     { key: 'visits', label: 'My Visits' },
+    { key: 'reminders', label: 'Reminders' },
     { key: 'ongoing', label: 'Ongoing stays' },
     { key: 'receivedPayments', label: 'Received Payments' },
     { key: 'analytics', label: 'Analytics' },

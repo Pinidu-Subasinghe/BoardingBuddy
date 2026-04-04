@@ -146,7 +146,7 @@ const OwnerBoardingDetails = () => {
       {/* Header with Back Button */}
       <div className="flex items-center justify-between mb-6">
         <button
-          onClick={() => navigate('/owner-dashboard?tab=boardings')}
+          onClick={() => navigate('/owner-dashboard', { state: { activeMenu: 'boardings' } })}
           className="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -371,7 +371,7 @@ const OwnerBoardingDetails = () => {
                 Delete Boarding
               </button>
               <button
-                onClick={() => navigate('/owner-dashboard')}
+                onClick={() => navigate('/owner-dashboard', { state: { activeMenu: 'boardings' } })}
                 className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
