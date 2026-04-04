@@ -8,12 +8,12 @@ import universities from '../data/universities.json';
 
 const Browse = () => {
   const [boardings, setBoardings] = useState([]);
-  const [nearby, setNearby] = useState([]);
-  const [other, setOther] = useState([]);
   const [loading, setLoading] = useState(true);
   const [amenityOptions, setAmenityOptions] = useState([]);
   const [filters, setFilters] = useState({
     university: '',
+    nearMyUniversity: false,
+    boardingType: '',
     priceMin: '',
     priceMax: '',
     capacityMin: '',
@@ -23,6 +23,8 @@ const Browse = () => {
   });
   const [appliedFilters, setAppliedFilters] = useState({
     university: '',
+    nearMyUniversity: false,
+    boardingType: '',
     priceMin: '',
     priceMax: '',
     capacityMin: '',
@@ -31,12 +33,15 @@ const Browse = () => {
     amenities: [],
   });
   const { user } = useContext(AuthContext);
+  const userUniversity = user?.university?.trim() || '';
 
-  const applyFilters = (items, ratings, active) => {
-    const gender = active._gender;
-    const defaultUniversity = active._defaultUniversity;
+  const applyFilters = (items, ratings, active, currentUserUniversity) => {
     const selectedUniversity = String(active.university || '').trim();
-    const effectiveUniversity = selectedUniversity || defaultUniversity;
+    const nearMyUniversity = Boolean(active.nearMyUniversity);
+    const effectiveUniversity = nearMyUniversity
+      ? String(currentUserUniversity || '').trim()
+      : selectedUniversity;
+    const boardingType = String(active.boardingType || '').toLowerCase();
     const priceMin = Number(active.priceMin);
     const priceMax = Number(active.priceMax);
     const capacityMin = Number(active.capacityMin);
@@ -45,11 +50,14 @@ const Browse = () => {
     const amenities = active.amenities || [];
 
     return items.filter((b) => {
-      if (gender === 'male' && !(b.boardingType === 'boys' || b.boardingType === 'any')) return false;
-      if (gender === 'female' && !(b.boardingType === 'girls' || b.boardingType === 'any')) return false;
+      if (effectiveUniversity && !((b.nearestUniversities || []).includes(effectiveUniversity))) {
+        return false;
+      }
 
-      // Default to the logged-in user's university, but allow explicit university filter override.
-      if (effectiveUniversity && !((b.nearestUniversities || []).includes(effectiveUniversity))) return false;
+      if (boardingType) {
+        const type = String(b.boardingType || '').toLowerCase();
+        if (type !== boardingType) return false;
+      }
 
       if (!Number.isNaN(priceMin) && String(active.priceMin).trim() !== '') {
         if ((b.monthlyRent || 0) < priceMin) return false;
@@ -88,7 +96,6 @@ const Browse = () => {
       try {
         const res = await getBoardings();
         const items = (res.data || []).map(item => item.boarding ? item.boarding : item);
-        setBoardings(items);
 
         const rRes = await getInspectorRatings();
         const ratings = (rRes.data || []);
@@ -104,21 +111,8 @@ const Browse = () => {
         });
         setAmenityOptions(Array.from(tags));
 
-        const userUniversity = user?.university?.trim() || '';
-        const gender = user?.gender?.toLowerCase();
-        const filteredItems = applyFilters(items, nextRatingMap, {
-          ...appliedFilters,
-          _gender: gender,
-          _defaultUniversity: userUniversity,
-        });
-
-        if (userUniversity) {
-          setNearby(filteredItems.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
-          setOther([]);
-        } else {
-          setNearby([]);
-          setOther(filteredItems.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
-        }
+        const filteredItems = applyFilters(items, nextRatingMap, appliedFilters, userUniversity);
+        setBoardings(filteredItems.map(b => ({ ...b, _rating: nextRatingMap[String(b._id)] })));
       } catch (err) {
         console.error('Error fetching boardings', err);
       } finally {
@@ -126,10 +120,30 @@ const Browse = () => {
       }
     };
     fetch();
-  }, [user?.university, user?.gender, appliedFilters]);
+  }, [appliedFilters, userUniversity]);
 
   const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      if (key === 'university') {
+        const nextUniversity = String(value || '').trim();
+        return {
+          ...prev,
+          university: value,
+          nearMyUniversity: nextUniversity ? false : prev.nearMyUniversity,
+        };
+      }
+
+      if (key === 'nearMyUniversity') {
+        const nextNearMyUniversity = Boolean(value);
+        return {
+          ...prev,
+          nearMyUniversity: nextNearMyUniversity,
+          university: nextNearMyUniversity ? '' : prev.university,
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
   };
 
   const handleToggleAmenity = (tag) => {
@@ -151,6 +165,8 @@ const Browse = () => {
   const handleReset = () => {
     const reset = {
       university: '',
+      nearMyUniversity: false,
+      boardingType: '',
       priceMin: '',
       priceMax: '',
       capacityMin: '',
@@ -162,21 +178,12 @@ const Browse = () => {
     setAppliedFilters(reset);
   };
 
-  const userUniversity = user?.university?.trim() || '';
-  const userGender = String(user?.gender || '').toLowerCase();
-  const genderFilterNote =
-    userGender === 'male'
-      ? 'Boardings are filtered by your profile gender. As a male user, you are seeing Boys and Any category boardings only.'
-      : userGender === 'female'
-        ? 'Boardings are filtered by your profile gender. As a female user, you are seeing Girls and Any category boardings only.'
-        : '';
-  const activeUniversityFilter = String(appliedFilters.university || '').trim();
-  const resultsUniversity = activeUniversityFilter || userUniversity;
-  const isViewingOwnUniversity = Boolean(userUniversity) && resultsUniversity === userUniversity;
   const filterUniversities = useMemo(
     () => Object.entries(universities).map(([code, name]) => ({ code, name })),
     []
   );
+  const activeUniversityCode = String(appliedFilters.university || '').trim();
+  const titleUniversityCode = appliedFilters.nearMyUniversity ? userUniversity : activeUniversityCode;
 
   return (
     <div className="min-h-screen bg-gray-50/70 py-8 md:py-10 lg:py-12">
@@ -191,6 +198,7 @@ const Browse = () => {
           <BrowseFilterPanel
             universities={filterUniversities}
             amenities={amenityOptions}
+            userUniversity={userUniversity}
             filters={filters}
             onChange={handleFilterChange}
             onToggleAmenity={handleToggleAmenity}
@@ -199,12 +207,6 @@ const Browse = () => {
           />
 
           <div>
-            {genderFilterNote && (
-              <p className="mb-4 text-sm font-medium text-red-600">
-                Note: {genderFilterNote}
-              </p>
-            )}
-
             {loading && boardings.length === 0 ? (
               <LoadingAnimation text="Loading boarding places..." containerClassName="py-20" />
             ) : boardings.length === 0 ? (
@@ -213,57 +215,26 @@ const Browse = () => {
                 <p className="text-gray-600">Try refreshing the list or check back later.</p>
               </div>
             ) : (
-              <div className="space-y-12 md:space-y-16">
-                {userUniversity && (
-                  <section>
-                    <h3 className="text-lg sm:text-2xl font-semibold text-gray-900 mb-5 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {isViewingOwnUniversity ? (
-                        <>
-                          Popular among <span className="text-indigo-600 font-bold">{userUniversity}</span> students
-                        </>
-                      ) : (
-                        <>
-                          Results for <span className="text-indigo-600 font-bold">{resultsUniversity}</span>
-                        </>
-                      )}
-                    </h3>
+              <section>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-5">
+                  {titleUniversityCode ? (
+                    <>
+                      Boardings near{' '}
+                      <span className="font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {titleUniversityCode}
+                      </span>
+                    </>
+                  ) : (
+                    'All Available Boardings'
+                  )}
+                </h3>
 
-                    {nearby.length === 0 ? (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-600">
-                        {isViewingOwnUniversity
-                          ? 'No boarding places found near your university yet.'
-                          : 'No boarding places found for the selected university.'}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
-                        {nearby.map(b => (
-                          <BoardingCard boarding={b} key={b._id || b.id} />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                )}
-
-                {!userUniversity && (
-                  <section>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-5">
-                      All Available Boardings
-                    </h3>
-
-                    {other.length === 0 ? (
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-600">
-                        No listings available at the moment.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
-                        {other.map(b => (
-                          <BoardingCard boarding={b} key={b._id || b.id} />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                )}
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-7 lg:gap-8">
+                  {boardings.map(b => (
+                    <BoardingCard boarding={b} key={b._id || b.id} />
+                  ))}
+                </div>
+              </section>
             )}
           </div>
         </div>

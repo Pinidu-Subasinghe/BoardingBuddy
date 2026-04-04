@@ -3,6 +3,11 @@ const Boarding = require('../models/Boarding');
 const User = require('../models/User');
 const { sendTransactionalEmail } = require('../utils/email');
 const { addNotification } = require('../utils/notification');
+const {
+  buildInquiryReceivedEmail,
+  buildInquiryResponseEmail,
+  buildInquiryActionTakenEmail,
+} = require('../utils/emailTemplates');
 
 const STATUS_VALUES = ['Pending', 'In Review', 'Resolved', 'Rejected'];
 const CATEGORY_VALUES = ['Property Issue', 'System Issue', 'Other'];
@@ -60,18 +65,12 @@ const createInquiry = async (req, res) => {
       ownerId: resolvedOwnerId,
     });
 
-    const message = `Dear ${req.user.name},\n\n` +
-      'Your inquiry has been successfully submitted.\n' +
-      'Our admin team will review it shortly.\n\n' +
-      'Thank you for reaching out.\n\n' +
-      'Thank You,\n' +
-      'BoardingBuddy \u{1F3E0} Team';
+    const inquiryReceivedEmail = buildInquiryReceivedEmail(req.user.name);
 
     sendEmailSafe(
       {
         to: req.user.email,
-        subject: 'Inquiry Received - BoardingBuddy \u{1F3E0}',
-        text: message,
+        ...inquiryReceivedEmail,
       },
       'Inquiry submitted'
     );
@@ -171,19 +170,12 @@ const addAdminResponse = async (req, res) => {
 
     const user = await User.findById(inquiry.userId).select('name email');
     if (user) {
-      const message = `Dear ${user.name},\n\n` +
-        'Your inquiry has been reviewed.\n\n' +
-        'Admin Response:\n' +
-        `${response}\n\n` +
-        'Thank you for your patience.\n\n' +
-        'Thank You,\n' +
-        'BoardingBuddy \u{1F3E0} Team';
+      const inquiryResponseEmail = buildInquiryResponseEmail(user.name, response);
 
       sendEmailSafe(
         {
           to: user.email,
-          subject: 'Update on Your Inquiry',
-          text: message,
+          ...inquiryResponseEmail,
         },
         'Inquiry response'
       );
@@ -228,17 +220,12 @@ const applyPenaltyPoints = async (req, res) => {
 
     const user = await User.findById(inquiry.userId).select('name email');
     if (user) {
-      const message = `Dear ${user.name},\n\n` +
-        'Appropriate action has been taken regarding your inquiry.\n\n' +
-        'Thank you for helping us maintain quality standards.\n\n' +
-        'Thank You,\n' +
-        'BoardingBuddy \u{1F3E0} Team';
+      const inquiryActionTakenEmail = buildInquiryActionTakenEmail(user.name);
 
       sendEmailSafe(
         {
           to: user.email,
-          subject: 'Action Taken on Your Inquiry',
-          text: message,
+          ...inquiryActionTakenEmail,
         },
         'Inquiry penalty'
       );

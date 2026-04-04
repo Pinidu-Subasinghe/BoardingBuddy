@@ -2,6 +2,10 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const { addNotification } = require("../utils/notification");
 const { sendTransactionalEmail } = require("../utils/email");
+const {
+  buildProfileUpdatedEmail,
+  buildAccountDeletedEmail,
+} = require("../utils/emailTemplates");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
@@ -17,29 +21,6 @@ const parseMaybeJson = (value) => {
     return value;
   }
 };
-
-const buildProfileUpdatedEmail = (userName) => ({
-  subject: "Your BoardingBuddy Profile Was Updated",
-  text:
-    `Dear ${userName},\n\n` +
-    "This is a confirmation that your profile information was successfully updated.\n\n" +
-    "If you did not make these changes, please secure your account immediately.\n\n" +
-    "Thank you for keeping your information up to date.\n\n" +
-    "Thank You,\n" +
-    "BoardingBuddy \ud83c\udfe0 Team"
-});
-
-const buildAccountDeletedEmail = (userName) => ({
-  subject: "Your BoardingBuddy Account Has Been Deleted",
-  text:
-    `Dear ${userName},\n\n` +
-    "Your BoardingBuddy account has been successfully deleted.\n" +
-    "We're sorry to see you go.\n\n" +
-    "If this was not you, please contact support immediately.\n\n" +
-    "We appreciate the time you spent with us and hope to serve you again in the future.\n\n" +
-    "Thank You,\n" +
-    "BoardingBuddy \ud83c\udfe0 Team"
-});
 
 // Get profile
 const getUserProfile = async (req, res) => {
@@ -153,8 +134,7 @@ const updateUserProfile = async (req, res) => {
     const profileUpdatedEmail = buildProfileUpdatedEmail(updatedUser.name);
     sendTransactionalEmail({
       to: updatedUser.email,
-      subject: profileUpdatedEmail.subject,
-      text: profileUpdatedEmail.text
+      ...profileUpdatedEmail,
     }).catch((error) => {
       console.error("Email error:", error);
     });
@@ -188,8 +168,7 @@ const deleteMyAccount = async (req, res) => {
     const accountDeletedEmail = buildAccountDeletedEmail(emailTarget.name);
     sendTransactionalEmail({
       to: emailTarget.email,
-      subject: accountDeletedEmail.subject,
-      text: accountDeletedEmail.text
+      ...accountDeletedEmail,
     }).catch((error) => {
       console.error("Email error:", error);
     });
