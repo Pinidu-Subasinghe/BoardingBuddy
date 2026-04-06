@@ -53,11 +53,11 @@ const DashboardShell = ({
   }, [activeMenu]);
 
   return (
-    <div className={`flex overflow-hidden bg-gray-100 ${hasTopNav ? 'h-[calc(100vh-4.1rem)]' : 'h-screen'}`}>
+    <div className={`flex overflow-hidden bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50/40 ${hasTopNav ? 'h-[calc(100vh-4.1rem)]' : 'h-screen'}`}>
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex w-64 bg-white border-r flex-col justify-between">
+      <aside className="hidden md:flex w-72 bg-white/95 backdrop-blur border-r border-gray-200/80 flex-col justify-between shadow-sm">
         <div>
-          <div className="p-6 border-b">
+          <div className="p-6 border-b border-gray-200/80 bg-gradient-to-r from-indigo-50/80 via-white to-cyan-50/60">
             <h2 className="text-lg font-semibold text-gray-800">Hi {user?.name || 'User'} {titleEmoji}</h2>
             {/* Role color pill */}
             <div className="mt-2">
@@ -84,11 +84,11 @@ const DashboardShell = ({
                 <div key={item.key} className="space-y-1">
                   <button
                     onClick={() => handleParentClick(item)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition ${
-                      parentActive ? 'bg-indigo-500 text-white shadow' : 'text-gray-600 hover:bg-gray-100'
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                      parentActive ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-700'
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-current opacity-70"></span>
+                    <span className="w-2 h-2 rounded-full bg-current opacity-80"></span>
                     {item.label}
                   </button>
 
@@ -100,8 +100,8 @@ const DashboardShell = ({
                           onClick={() => setActiveMenu(sub.key)}
                           className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition ${
                             activeMenu === sub.key
-                              ? 'bg-indigo-100 text-indigo-700'
-                              : 'text-gray-600 hover:bg-gray-100'
+                              ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200'
+                              : 'text-gray-600 hover:bg-indigo-50'
                           }`}
                         >
                           {sub.label}
@@ -115,8 +115,8 @@ const DashboardShell = ({
           </nav>
         </div>
 
-        <div className="p-4 border-t">
-          <button onClick={confirmLogout} className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm transition">
+        <div className="p-4 border-t border-gray-200/80 bg-white">
+          <button onClick={confirmLogout} className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-sm">
             Logout
           </button>
         </div>
@@ -126,7 +126,7 @@ const DashboardShell = ({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl p-5 flex flex-col justify-between">
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-xl p-5 flex flex-col justify-between">
             <div>
               <h2 className="text-lg font-semibold mb-6">Hi {user?.name || 'User'} {titleEmoji}</h2>
               <div className="space-y-2">
@@ -139,7 +139,7 @@ const DashboardShell = ({
                           handleParentClick(item);
                           setMobileOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition ${parentActive ? 'bg-indigo-500 text-white' : 'hover:bg-gray-100 text-gray-700'}`}
+                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition ${parentActive ? 'bg-indigo-600 text-white' : 'hover:bg-indigo-50 text-gray-700'}`}
                       >
                         {item.label}
                       </button>
@@ -153,7 +153,7 @@ const DashboardShell = ({
                                 setActiveMenu(sub.key);
                                 setMobileOpen(false);
                               }}
-                              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition ${activeMenu === sub.key ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-700'}`}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition ${activeMenu === sub.key ? 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200' : 'hover:bg-indigo-50 text-gray-700'}`}
                             >
                               {sub.label}
                             </button>
@@ -166,7 +166,7 @@ const DashboardShell = ({
               </div>
             </div>
 
-            <button onClick={() => { setMobileOpen(false); confirmLogout(); }} className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm">
+            <button onClick={() => { setMobileOpen(false); confirmLogout(); }} className="w-full bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-semibold">
               Logout
             </button>
           </div>
@@ -181,7 +181,7 @@ const DashboardShell = ({
           </div>
         )}
         <div className="flex items-center justify-between px-4 md:px-6 h-14 bg-white border-b md:hidden">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-gray-100">
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-indigo-50">
             <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -190,7 +190,7 @@ const DashboardShell = ({
           <div />
         </div>
 
-        <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-gray-50">{children}</div>
+        <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-transparent">{children}</div>
       </main>
     </div>
   );
