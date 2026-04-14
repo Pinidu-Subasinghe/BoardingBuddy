@@ -453,8 +453,8 @@ const StudentPaymentPage = () => {
                 <p className="mt-1 text-sm font-semibold text-indigo-900">{booking?.boarding?.title || 'Boarding'}</p>
               </div>
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-right">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">Amount</p>
-                <p className="mt-1 text-lg font-black text-emerald-900">LKR {amount.toLocaleString()}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">Amount LKR</p>
+                <p className="mt-1 text-lg font-black text-emerald-900">{amount.toLocaleString()}</p>
               </div>
             </div>
           </section>
@@ -497,7 +497,8 @@ const StudentPaymentPage = () => {
             {paymentMethod === 'card' ? (
               <p className="mt-3 text-xs text-slate-500">Test mode: use 1234123412341234 or 4242424242424242 (non-production only).</p>
             ) : (
-              <p className="mt-3 text-xs text-slate-500">Upload one clear slip image (JPG, PNG, WEBP).</p>
+              <>
+              </>
             )}
 
             {alreadyPaid && (
@@ -638,9 +639,6 @@ const StudentPaymentPage = () => {
                       <div>
                         <span className="font-medium">Account Number:</span>{' '}
                         {formatAccountNumber(ownerPaymentDetails?.accountNumber)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Owner:</span> {booking?.boarding?.owner?.name || 'N/A'}
                       </div>
                     </div>
                   </div>
