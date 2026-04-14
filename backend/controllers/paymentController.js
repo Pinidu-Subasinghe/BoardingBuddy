@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Boarding = require('../models/Boarding');
 const Payment = require('../models/Payment');
+const User = require('../models/User');
 const { addNotification } = require('../utils/notification');
 
 const luhnCheck = (cardNumber) => {
@@ -161,6 +162,111 @@ const createCardPayment = async (req, res) => {
   }
 };
 
+const createBankTransferPayment = async (req, res) => {
+  try {
+    const { bookingId, amount } = req.body;
+
+    if (!bookingId || !mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ message: 'Valid bookingId is required' });
+    }
+
+    if (!req.file?.path) {
+      return res.status(400).json({ message: 'Payment slip image is required' });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (booking.student.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to pay for this booking' });
+    }
+
+    if (booking.status !== 'visit_completed') {
+      return res.status(400).json({ message: 'Bank transfer is available only after visit completion' });
+    }
+
+    const activeStay = await Booking.findOne({ student: req.user._id, status: 'student_stayed' });
+    if (activeStay) {
+      return res.status(400).json({
+        message: 'You already have an active stay. You can pay for a new stay only after leaving your current boarding.'
+      });
+    }
+
+    const existingSuccess = await Payment.findOne({
+      booking: booking._id,
+      student: req.user._id,
+      status: 'succeeded'
+    });
+    if (existingSuccess) {
+      return res.status(409).json({ message: 'Payment already completed for this booking' });
+    }
+
+    const boarding = await Boarding.findById(booking.boarding).select('monthlyRent title owner');
+    if (!boarding) return res.status(404).json({ message: 'Boarding not found' });
+
+    const owner = await User.findById(booking.owner).select('paymentDetails');
+    const ownerPaymentDetails = owner?.paymentDetails;
+    const hasOwnerBankDetails =
+      !!ownerPaymentDetails?.accountNumber &&
+      !!ownerPaymentDetails?.bankName &&
+      !!ownerPaymentDetails?.branchName &&
+      !!ownerPaymentDetails?.accountHolderName;
+
+    if (!hasOwnerBankDetails) {
+      return res.status(400).json({ message: 'Owner bank details are not available for this boarding' });
+    }
+
+    // Student pays only the first month before owner confirms stay.
+    const expectedAmount = Number(boarding.monthlyRent);
+    const normalizedAmount = amount !== undefined ? Number(amount) : expectedAmount;
+
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      return res.status(400).json({ message: 'Invalid payment amount' });
+    }
+
+    if (Math.abs(normalizedAmount - expectedAmount) > 0.01) {
+      return res.status(400).json({
+        message: `Amount mismatch. Expected amount is ${expectedAmount.toFixed(2)}`
+      });
+    }
+
+    const payment = await Payment.create({
+      booking: booking._id,
+      boarding: boarding._id,
+      student: booking.student,
+      owner: booking.owner,
+      amount: Number(normalizedAmount.toFixed(2)),
+      currency: 'LKR',
+      method: 'bank_transfer',
+      status: 'succeeded',
+      transactionId: `BT-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      slipImageUrl: req.file.path,
+      slipImagePublicId: req.file.filename,
+      paidAt: new Date()
+    });
+
+    try {
+      addNotification({
+        userId: booking.owner,
+        message: `Bank transfer received for ${boarding.title}`,
+        type: 'payment_received',
+        data: {
+          paymentId: payment._id.toString(),
+          bookingId: booking._id.toString(),
+          amount: payment.amount,
+          method: payment.method
+        }
+      });
+    } catch (notifyErr) {
+      console.error('Notification error:', notifyErr);
+    }
+
+    return res.status(201).json(payment);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 const getMyPayments = async (req, res) => {
   try {
     const payments = await Payment.find({ student: req.user._id })
@@ -221,6 +327,7 @@ const getPaymentById = async (req, res) => {
 
 module.exports = {
   createCardPayment,
+  createBankTransferPayment,
   getMyPayments,
   getOwnerPayments,
   getPaymentById

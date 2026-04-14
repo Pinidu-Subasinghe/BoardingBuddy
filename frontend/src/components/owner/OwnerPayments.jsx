@@ -44,13 +44,14 @@ const OwnerPayments = () => {
       doc.setTextColor(107, 114, 128);
       doc.text(`Generated: ${formatDate(generatedAt)} ${generatedAt.toLocaleTimeString()}`, marginLeft, 60);
 
-      const head = [['#', 'Student', 'Contact', 'Boarding', 'Payment Date', 'Amount', 'Payment ID']];
+      const head = [['#', 'Student', 'Contact', 'Boarding', 'Payment Date', 'Method', 'Amount', 'Payment ID']];
       const body = payments.map((p, idx) => [
         String(idx + 1),
         p.student?.name || '—',
         p.student?.contactNumber || p.student?.email || '—',
         p.boarding?.title || '—',
         formatDate(p.paidAt || p.createdAt),
+        p.method === 'bank_transfer' ? 'Bank Transfer' : 'Card',
         `LKR ${Number(p.amount || 0).toLocaleString()}`,
         p.transactionId || p._id,
       ]);
@@ -65,7 +66,7 @@ const OwnerPayments = () => {
           headStyles: { fillColor: [99, 102, 241], textColor: 255 },
           theme: 'striped',
           margin: { left: marginLeft, right: 40 },
-          columnStyles: { 5: { halign: 'right' } },
+          columnStyles: { 6: { halign: 'right' } },
         });
       } else if (typeof doc.autoTable === 'function') {
         // fallback for plugin attached to jsPDF prototype
@@ -77,7 +78,7 @@ const OwnerPayments = () => {
           headStyles: { fillColor: [99, 102, 241], textColor: 255 },
           theme: 'striped',
           margin: { left: marginLeft, right: 40 },
-          columnStyles: { 5: { halign: 'right' } },
+          columnStyles: { 6: { halign: 'right' } },
         });
       } else {
         throw new Error('jspdf-autotable not found or incompatible');
@@ -124,7 +125,9 @@ const OwnerPayments = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Boarding</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slip</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment ID</th>
               </tr>
             </thead>
@@ -135,7 +138,17 @@ const OwnerPayments = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{p.student?.contactNumber || p.student?.email || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.boarding?.title || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(p.paidAt || p.createdAt)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{p.method === 'bank_transfer' ? 'Bank Transfer' : 'Card'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-indigo-600 font-semibold">LKR {Number(p.amount || 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {p.method === 'bank_transfer' && p.slipImageUrl ? (
+                      <a href={p.slipImageUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                        View Slip
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.transactionId || p._id}</td>
                 </tr>
               ))}

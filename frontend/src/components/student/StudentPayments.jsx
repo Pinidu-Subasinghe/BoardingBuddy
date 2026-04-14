@@ -53,10 +53,12 @@ const StudentPayments = () => {
 
   const summary = useMemo(() => {
     const successfulPayments = payments.filter((payment) => payment?.status === 'succeeded');
+    const pendingPayments = payments.filter((payment) => payment?.status === 'pending');
     const totalAmount = successfulPayments.reduce((sum, payment) => sum + Number(payment?.amount || 0), 0);
 
     return {
       successfulCount: successfulPayments.length,
+      pendingCount: pendingPayments.length,
       totalAmount,
     };
   }, [payments]);
@@ -76,6 +78,9 @@ const StudentPayments = () => {
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700">
             Successful: {summary.successfulCount}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-700">
+            Pending: {summary.pendingCount}
           </span>
           <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">
             Total Paid: LKR {summary.totalAmount.toLocaleString()}
@@ -105,7 +110,7 @@ const StudentPayments = () => {
                   <th className="px-4 sm:px-6 py-3 text-left font-semibold">Amount</th>
                   <th className="px-4 sm:px-6 py-3 text-left font-semibold">Status</th>
                   <th className="px-4 sm:px-6 py-3 text-left font-semibold">Method</th>
-                  <th className="px-4 sm:px-6 py-3 text-left font-semibold">Card</th>
+                  <th className="px-4 sm:px-6 py-3 text-left font-semibold">Card / Slip</th>
                   <th className="px-4 sm:px-6 py-3 text-left font-semibold">Transaction ID</th>
                 </tr>
               </thead>
@@ -113,6 +118,7 @@ const StudentPayments = () => {
               <tbody className="divide-y divide-gray-100 bg-white">
                 {payments.map((payment) => {
                   const status = String(payment?.status || '').toLowerCase();
+                  const method = String(payment?.method || '').toLowerCase();
                   const amount = Number(payment?.amount || 0).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -121,7 +127,18 @@ const StudentPayments = () => {
                   const statusClass =
                     status === 'succeeded'
                       ? 'bg-green-100 text-green-700 border-green-200'
-                      : 'bg-red-100 text-red-700 border-red-200';
+                      : status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        : 'bg-red-100 text-red-700 border-red-200';
+
+                  const statusLabel =
+                    status === 'succeeded'
+                      ? 'Succeeded'
+                      : status === 'pending'
+                        ? 'Pending'
+                        : 'Failed';
+
+                  const methodLabel = method === 'bank_transfer' ? 'Bank Transfer' : 'Card';
 
                   return (
                     <tr key={payment?._id || payment?.transactionId} className="hover:bg-gray-50/70">
@@ -142,16 +159,31 @@ const StudentPayments = () => {
 
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}>
-                          {status === 'succeeded' ? 'Succeeded' : 'Failed'}
+                          {statusLabel}
                         </span>
                       </td>
 
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-700 capitalize">
-                        {payment?.method || 'card'}
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-700">
+                        {methodLabel}
                       </td>
 
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-700">
-                        {String(payment?.cardBrand || 'card').toUpperCase()} **** {payment?.cardLast4 || '----'}
+                        {method === 'bank_transfer' ? (
+                          payment?.slipImageUrl ? (
+                            <a
+                              href={payment.slipImageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-600 hover:underline font-medium"
+                            >
+                              View Slip
+                            </a>
+                          ) : (
+                            'Slip uploaded'
+                          )
+                        ) : (
+                          `${String(payment?.cardBrand || 'card').toUpperCase()} **** ${payment?.cardLast4 || '----'}`
+                        )}
                       </td>
 
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-xs text-gray-600 font-mono">
