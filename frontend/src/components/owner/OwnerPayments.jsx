@@ -166,7 +166,7 @@ const OwnerPayments = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{p.student?.contactNumber || p.student?.email || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.boarding?.title || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(p.paidAt || p.createdAt)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{p.method === 'bank_transfer' ? 'Bank Transfer' : 'Card'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{p.method === 'bank_transfer' ? 'Bank' : 'Card'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-indigo-600 font-semibold">LKR {Number(p.amount || 0).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {p.method === 'bank_transfer' && p.slipImageUrl ? (
