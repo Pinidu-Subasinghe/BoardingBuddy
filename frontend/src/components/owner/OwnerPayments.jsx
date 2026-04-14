@@ -6,6 +6,11 @@ import { formatDate } from '../../utils/date';
 const OwnerPayments = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [slipModal, setSlipModal] = useState({
+    open: false,
+    url: '',
+    paymentId: ''
+  });
 
   useEffect(() => {
     const fetchPayments = async () => {
@@ -21,6 +26,29 @@ const OwnerPayments = () => {
 
     fetchPayments();
   }, []);
+
+  useEffect(() => {
+    if (!slipModal.open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [slipModal.open]);
+
+  const openSlipModal = (url, paymentId) => {
+    setSlipModal({
+      open: true,
+      url,
+      paymentId: paymentId || ''
+    });
+  };
+
+  const closeSlipModal = () => {
+    setSlipModal({ open: false, url: '', paymentId: '' });
+  };
 
   const exportAsPDF = async () => {
     try {
@@ -142,9 +170,13 @@ const OwnerPayments = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-indigo-600 font-semibold">LKR {Number(p.amount || 0).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {p.method === 'bank_transfer' && p.slipImageUrl ? (
-                      <a href={p.slipImageUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => openSlipModal(p.slipImageUrl, p.transactionId || p._id)}
+                        className="text-indigo-600 hover:underline"
+                      >
                         View Slip
-                      </a>
+                      </button>
                     ) : (
                       '—'
                     )}
@@ -154,6 +186,44 @@ const OwnerPayments = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {slipModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close slip preview"
+            className="absolute inset-0 bg-black/60"
+            onClick={closeSlipModal}
+          />
+
+          <div className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-6">
+              <h4 className="text-base sm:text-lg font-semibold text-gray-900">Transfer Slip Preview</h4>
+              <button
+                type="button"
+                onClick={closeSlipModal}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-4 sm:p-6">
+              {slipModal.url ? (
+                <img
+                  src={slipModal.url}
+                  alt={`Payment slip ${slipModal.paymentId}`.trim()}
+                  className="mx-auto max-h-[75vh] w-auto rounded-lg border border-slate-200 bg-white"
+                />
+              ) : (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                  Slip image is unavailable.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

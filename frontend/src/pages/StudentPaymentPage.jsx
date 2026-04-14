@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { createBankTransferPayment, createCardPayment, getMyBookings, getMyPayments } from '../api/api';
@@ -138,6 +138,7 @@ const StudentPaymentPage = () => {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [slipImageFile, setSlipImageFile] = useState(null);
   const [slipValidationError, setSlipValidationError] = useState('');
+  const slipInputRef = useRef(null);
   const [form, setForm] = useState({
     cardholderName: '',
     cardNumber: '',
@@ -340,6 +341,7 @@ const StudentPaymentPage = () => {
     if (!allowedTypes.has(String(file.type || '').toLowerCase())) {
       setSlipImageFile(null);
       setSlipValidationError('Supported formats: JPG, JPEG, PNG, WEBP.');
+      event.target.value = '';
       return;
     }
 
@@ -347,10 +349,19 @@ const StudentPaymentPage = () => {
     if (file.size > maxFileSize) {
       setSlipImageFile(null);
       setSlipValidationError('Image must be 5MB or smaller.');
+      event.target.value = '';
       return;
     }
 
     setSlipImageFile(file);
+  };
+
+  const handleRemoveSlipFile = () => {
+    setSlipImageFile(null);
+    setSlipValidationError('');
+    if (slipInputRef.current) {
+      slipInputRef.current.value = '';
+    }
   };
 
   const switchPaymentMethod = (method) => {
@@ -646,6 +657,7 @@ const StudentPaymentPage = () => {
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-700">Upload transfer slip image</label>
                     <input
+                      ref={slipInputRef}
                       type="file"
                       accept="image/jpeg,image/jpg,image/png,image/webp"
                       onChange={handleSlipFileChange}
@@ -656,7 +668,17 @@ const StudentPaymentPage = () => {
                     />
                     <p className="mt-1 text-xs text-slate-500">Accepted formats: JPG, JPEG, PNG, WEBP. Max 5MB.</p>
                     {slipImageFile && (
-                      <p className="mt-1 text-xs text-emerald-700 font-medium">Selected file: {slipImageFile.name}</p>
+                      <div className="mt-1 flex items-center gap-3">
+                        <p className="text-xs text-emerald-700 font-medium">Selected file: {slipImageFile.name}</p>
+                        <button
+                          type="button"
+                          onClick={handleRemoveSlipFile}
+                          className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline disabled:opacity-60"
+                          disabled={submitting}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                     {slipValidationError && (
                       <p className="mt-1 text-xs text-red-600">{slipValidationError}</p>
