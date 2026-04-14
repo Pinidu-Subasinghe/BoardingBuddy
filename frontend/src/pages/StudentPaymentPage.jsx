@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { createCardPayment, getMyBookings, getMyPayments } from '../api/api';
+import { createBankTransferPayment, createCardPayment, getMyBookings, getMyPayments } from '../api/api';
 import Swal from 'sweetalert2';
 import LoadingAnimation from '../components/LoadingAnimation';
 
@@ -14,6 +14,12 @@ const formatExpiryInput = (value) => {
   const digitsOnly = String(value || '').replace(/\D/g, '').slice(0, 4);
   if (digitsOnly.length <= 2) return digitsOnly;
   return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+};
+
+const formatAccountNumber = (value) => {
+  const digitsOnly = String(value || '').replace(/\D/g, '');
+  if (!digitsOnly) return 'N/A';
+  return digitsOnly.replace(/(.{4})/g, '$1 ').trim();
 };
 
 const parseExpiry = (value) => {
@@ -129,6 +135,10 @@ const StudentPaymentPage = () => {
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [error, setError] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [slipImageFile, setSlipImageFile] = useState(null);
+  const [slipValidationError, setSlipValidationError] = useState('');
+  const slipInputRef = useRef(null);
   const [form, setForm] = useState({
     cardholderName: '',
     cardNumber: '',
@@ -141,7 +151,11 @@ const StudentPaymentPage = () => {
       try {
         const [bookingsRes, paymentsRes] = await Promise.all([getMyBookings(), getMyPayments()]);
         const bookings = bookingsRes.data || [];
-        const payments = paymentsRes.data || [];
+        const payments = Array.isArray(paymentsRes.data)
+          ? paymentsRes.data
+          : Array.isArray(paymentsRes.data?.payments)
+            ? paymentsRes.data.payments
+            : [];
 
         const matched = bookings.find((b) => b._id === bookingId);
         if (!matched) {
@@ -185,6 +199,12 @@ const StudentPaymentPage = () => {
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const isBlocked = hasActiveStay || alreadyPaid || !booking || booking?.status !== 'visit_completed' || !!error;
   const cardBrand = useMemo(() => detectCardBrand(form.cardNumber), [form.cardNumber]);
+  const ownerPaymentDetails = booking?.boarding?.owner?.paymentDetails || null;
+  const hasOwnerBankDetails =
+    !!ownerPaymentDetails?.accountNumber &&
+    !!ownerPaymentDetails?.bankName &&
+    !!ownerPaymentDetails?.branchName &&
+    !!ownerPaymentDetails?.accountHolderName;
 
   const previewNumber = useMemo(() => {
     const digits = String(form.cardNumber || '').replace(/\D/g, '').slice(0, 16);
@@ -209,59 +229,93 @@ const StudentPaymentPage = () => {
 
     setSubmitAttempted(true);
 
-    if (hasValidationErrors) {
-      const parsedExpiry = parseExpiry(form.expiry);
-      const hasExpiredCard =
-        !!parsedExpiry &&
-        parsedExpiry.month >= 1 &&
-        parsedExpiry.month <= 12 &&
-        (parsedExpiry.yearFull < currentYear ||
-          (parsedExpiry.yearFull === currentYear && parsedExpiry.month < currentMonth));
-
-      if (hasExpiredCard) {
-        await Swal.fire({
-          title: 'Card expired',
-          text: 'Please use a card with a valid expiry date.',
-          icon: 'warning',
-          confirmButtonColor: '#f59e0b',
-        });
-      }
-
-      return;
-    }
-
     if (isBlocked) return;
 
     try {
-      const parsedExpiry = parseExpiry(form.expiry);
-      if (!parsedExpiry) {
-        await Swal.fire({
-          title: 'Invalid expiry',
-          text: 'Please enter expiry in MM/YY format.',
-          icon: 'warning',
-          confirmButtonColor: '#f59e0b',
+      if (paymentMethod === 'card') {
+        if (hasValidationErrors) {
+          const parsedExpiry = parseExpiry(form.expiry);
+          const hasExpiredCard =
+            !!parsedExpiry &&
+            parsedExpiry.month >= 1 &&
+            parsedExpiry.month <= 12 &&
+            (parsedExpiry.yearFull < currentYear ||
+              (parsedExpiry.yearFull === currentYear && parsedExpiry.month < currentMonth));
+
+          if (hasExpiredCard) {
+            await Swal.fire({
+              title: 'Card expired',
+              text: 'Please use a card with a valid expiry date.',
+              icon: 'warning',
+              confirmButtonColor: '#f59e0b',
+            });
+          }
+
+          return;
+        }
+
+        const parsedExpiry = parseExpiry(form.expiry);
+        if (!parsedExpiry) {
+          await Swal.fire({
+            title: 'Invalid expiry',
+            text: 'Please enter expiry in MM/YY format.',
+            icon: 'warning',
+            confirmButtonColor: '#f59e0b',
+          });
+          return;
+        }
+
+        setSubmitting(true);
+        await createCardPayment({
+          bookingId,
+          amount,
+          cardholderName: form.cardholderName.trim(),
+          cardNumber: form.cardNumber.replace(/\D/g, ''),
+          expiryMonth: parsedExpiry.monthText,
+          expiryYear: parsedExpiry.yearFullText,
+          cvv: form.cvv.trim()
         });
-        return;
+
+        await Swal.fire({
+          title: 'Payment completed',
+          text: 'The owner can now confirm your stay.',
+          icon: 'success',
+          confirmButtonColor: '#16a34a',
+          draggable: true,
+        });
+      } else {
+        if (!hasOwnerBankDetails) {
+          await Swal.fire({
+            title: 'Bank details unavailable',
+            text: 'Owner bank details are missing. Please use card payment or contact support.',
+            icon: 'warning',
+            confirmButtonColor: '#f59e0b',
+          });
+          return;
+        }
+
+        if (!slipImageFile) {
+          setSlipValidationError('Payment slip image is required.');
+          return;
+        }
+
+        setSubmitting(true);
+        const payload = new FormData();
+        payload.append('bookingId', bookingId);
+        payload.append('amount', String(amount));
+        payload.append('slipImage', slipImageFile);
+
+        await createBankTransferPayment(payload);
+
+        await Swal.fire({
+          title: 'Slip uploaded',
+          text: 'Bank transfer payment submitted successfully.',
+          icon: 'success',
+          confirmButtonColor: '#16a34a',
+          draggable: true,
+        });
       }
 
-      setSubmitting(true);
-      await createCardPayment({
-        bookingId,
-        amount,
-        cardholderName: form.cardholderName.trim(),
-        cardNumber: form.cardNumber.replace(/\D/g, ''),
-        expiryMonth: parsedExpiry.monthText,
-        expiryYear: parsedExpiry.yearFullText,
-        cvv: form.cvv.trim()
-      });
-
-      await Swal.fire({
-        title: 'Payment completed',
-        text: 'The owner can now confirm your stay.',
-        icon: 'success',
-        confirmButtonColor: '#16a34a',
-        draggable: true,
-      });
       navigate('/student-dashboard', { state: { activeMenu: 'my-boardings' } });
     } catch (err) {
       await Swal.fire({
@@ -272,6 +326,48 @@ const StudentPaymentPage = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSlipFileChange = (event) => {
+    const file = event.target.files?.[0];
+    setSlipValidationError('');
+
+    if (!file) {
+      setSlipImageFile(null);
+      return;
+    }
+
+    const allowedTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(String(file.type || '').toLowerCase())) {
+      setSlipImageFile(null);
+      setSlipValidationError('Supported formats: JPG, JPEG, PNG, WEBP.');
+      event.target.value = '';
+      return;
+    }
+
+    const maxFileSize = 5 * 1024 * 1024;
+    if (file.size > maxFileSize) {
+      setSlipImageFile(null);
+      setSlipValidationError('Image must be 5MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    setSlipImageFile(file);
+  };
+
+  const handleRemoveSlipFile = () => {
+    setSlipImageFile(null);
+    setSlipValidationError('');
+    if (slipInputRef.current) {
+      slipInputRef.current.value = '';
+    }
+  };
+
+  const switchPaymentMethod = (method) => {
+    setPaymentMethod(method);
+    setSubmitAttempted(false);
+    setSlipValidationError('');
   };
 
   if (!user || user.role !== 'student') {
@@ -303,45 +399,64 @@ const StudentPaymentPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-6">
           <section className="rounded-3xl border border-slate-200 bg-white/90 backdrop-blur-sm shadow-lg p-5 sm:p-7">
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Secure Card Payment</h1>
-            <p className="mt-2 text-sm text-slate-600">Pay the first month fee to unlock owner stay confirmation.</p>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">
+              {paymentMethod === 'card' ? 'Secure Card Payment' : 'Bank Transfer Payment'}
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              {paymentMethod === 'card'
+                ? 'Pay the first month fee to unlock owner stay confirmation.'
+                : 'Transfer the first month fee to owner bank account and upload your payment slip.'}
+            </p>
 
-            <div className="mt-6 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-700 p-5 text-white shadow-xl">
-              <div className="flex items-start justify-between">
-                <div className="rounded-md bg-white/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">
-                  Virtual Card
+            {paymentMethod === 'card' ? (
+              <>
+                <div className="mt-6 rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-700 p-5 text-white shadow-xl">
+                  <div className="flex items-start justify-between">
+                    <div className="rounded-md bg-white/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">
+                      Virtual Card
+                    </div>
+                    <div className="rounded-md bg-white/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">
+                      {cardBrand === 'unknown' ? 'Accepted Cards' : cardBrand}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-3">
+                    <div className="h-9 w-11 rounded-md bg-gradient-to-br from-yellow-200 to-yellow-500 shadow-inner" />
+                    <div className="h-7 w-8 rounded-md border border-white/30" />
+                  </div>
+
+                  <p className="mt-6 text-lg sm:text-xl font-semibold tracking-[0.18em]">{previewNumber}</p>
+
+                  <div className="mt-6 flex items-end justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Card holder</p>
+                      <p className="text-sm font-semibold tracking-wide">{previewHolder}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Expires</p>
+                      <p className="text-sm font-semibold tracking-wide">{previewExpiry}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-md bg-white/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]">
-                  {cardBrand === 'unknown' ? 'Accepted Cards' : cardBrand}
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-slate-500">Accepted:</span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('visa')}</span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('mastercard')}</span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('amex')}</span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('discover')}</span>
                 </div>
+              </>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+                <p className="text-sm font-semibold">How to complete bank transfer</p>
+                <ol className="mt-3 list-decimal pl-5 space-y-2 text-sm text-emerald-900/90">
+                  <li>Use the bank details shown on the right panel.</li>
+                  <li>Transfer the exact amount shown below.</li>
+                  <li>Upload a clear screenshot/photo of your transfer slip.</li>
+                </ol>
               </div>
-
-              <div className="mt-6 flex items-center gap-3">
-                <div className="h-9 w-11 rounded-md bg-gradient-to-br from-yellow-200 to-yellow-500 shadow-inner" />
-                <div className="h-7 w-8 rounded-md border border-white/30" />
-              </div>
-
-              <p className="mt-6 text-lg sm:text-xl font-semibold tracking-[0.18em]">{previewNumber}</p>
-
-              <div className="mt-6 flex items-end justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Card holder</p>
-                  <p className="text-sm font-semibold tracking-wide">{previewHolder}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Expires</p>
-                  <p className="text-sm font-semibold tracking-wide">{previewExpiry}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-slate-500">Accepted:</span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('visa')}</span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('mastercard')}</span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('amex')}</span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs">{renderBrandLogo('discover')}</span>
-            </div>
+            )}
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
@@ -349,8 +464,8 @@ const StudentPaymentPage = () => {
                 <p className="mt-1 text-sm font-semibold text-indigo-900">{booking?.boarding?.title || 'Boarding'}</p>
               </div>
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-right">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">Amount</p>
-                <p className="mt-1 text-lg font-black text-emerald-900">LKR {amount.toLocaleString()}</p>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">Amount LKR</p>
+                <p className="mt-1 text-lg font-black text-emerald-900">{amount.toLocaleString()}</p>
               </div>
             </div>
           </section>
@@ -359,11 +474,43 @@ const StudentPaymentPage = () => {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-bold text-slate-900">Payment Details</h2>
               <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {renderBrandLogo(cardBrand)}
+                {paymentMethod === 'card' ? renderBrandLogo(cardBrand) : 'BANK TRANSFER'}
               </span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">Test mode: use 1234123412341234 or 4242424242424242 (non-production only).</p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => switchPaymentMethod('card')}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  paymentMethod === 'card'
+                    ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+                disabled={submitting}
+              >
+                Card Payment
+              </button>
+              <button
+                type="button"
+                onClick={() => switchPaymentMethod('bank_transfer')}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  paymentMethod === 'bank_transfer'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+                disabled={submitting}
+              >
+                Bank Transfer
+              </button>
+            </div>
+
+            {paymentMethod === 'card' ? (
+              <p className="mt-3 text-xs text-slate-500">Test mode: use 1234123412341234 or 4242424242424242 (non-production only).</p>
+            ) : (
+              <>
+              </>
+            )}
 
             {alreadyPaid && (
               <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm">
@@ -383,93 +530,162 @@ const StudentPaymentPage = () => {
               </div>
             )}
 
+            {paymentMethod === 'bank_transfer' && !hasOwnerBankDetails && !isBlocked && (
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 text-sm">
+                Owner bank details are not available. Please choose card payment for now.
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              {submitAttempted && hasValidationErrors && (
+              {paymentMethod === 'card' && submitAttempted && hasValidationErrors && (
                 <div className="rounded-lg bg-red-50 border border-red-300 text-red-800 px-4 py-3 text-sm">
                   Please fix the highlighted fields before continuing.
                 </div>
               )}
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Cardholder name</label>
-                <input
-                  type="text"
-                  value={form.cardholderName}
-                  onChange={(e) => setForm((prev) => ({
-                    ...prev,
-                    cardholderName: e.target.value.replace(/[^A-Za-z ]/g, '').slice(0, 25)
-                  }))}
-                  placeholder="John Doe"
-                  className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                    submitAttempted && validationErrors.cardholderName ? 'border-red-400' : 'border-slate-300'
-                  }`}
-                  required
-                  maxLength={32}
-                  disabled={isBlocked || submitting}
-                />
-                {submitAttempted && validationErrors.cardholderName && (
-                  <p className="mt-1 text-xs text-red-600">{validationErrors.cardholderName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Card number</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.cardNumber}
-                  onChange={(e) => setForm((prev) => ({ ...prev, cardNumber: formatCardInput(e.target.value) }))}
-                  placeholder="1234 5678 9012 3456"
-                  className={`w-full border rounded-xl px-3 py-2.5 tracking-[0.12em] focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                    submitAttempted && validationErrors.cardNumber ? 'border-red-400' : 'border-slate-300'
-                  }`}
-                  required
-                  disabled={isBlocked || submitting}
-                />
-                {submitAttempted && validationErrors.cardNumber && (
-                  <p className="mt-1 text-xs text-red-600">{validationErrors.cardNumber}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Expiry (MM/YY)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.expiry}
-                    onChange={(e) => setForm((prev) => ({ ...prev, expiry: formatExpiryInput(e.target.value) }))}
-                    placeholder="MM/YY"
-                    className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                      submitAttempted && validationErrors.expiry ? 'border-red-400' : 'border-slate-300'
-                    }`}
-                    required
-                    maxLength={5}
-                    disabled={isBlocked || submitting}
-                  />
-                  {submitAttempted && validationErrors.expiry && (
-                    <p className="mt-1 text-xs text-red-600">{validationErrors.expiry}</p>
-                  )}
+              {paymentMethod === 'bank_transfer' && submitAttempted && !slipImageFile && (
+                <div className="rounded-lg bg-red-50 border border-red-300 text-red-800 px-4 py-3 text-sm">
+                  Please upload your transfer slip image before continuing.
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">CVV</label>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    value={form.cvv}
-                    onChange={(e) => setForm((prev) => ({ ...prev, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) }))}
-                    placeholder="123"
-                    className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
-                      submitAttempted && validationErrors.cvv ? 'border-red-400' : 'border-slate-300'
-                    }`}
-                    required
-                    disabled={isBlocked || submitting}
-                  />
-                  {submitAttempted && validationErrors.cvv && (
-                    <p className="mt-1 text-xs text-red-600">{validationErrors.cvv}</p>
-                  )}
-                </div>
-              </div>
+              )}
+
+              {paymentMethod === 'card' ? (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">Cardholder name</label>
+                    <input
+                      type="text"
+                      value={form.cardholderName}
+                      onChange={(e) => setForm((prev) => ({
+                        ...prev,
+                        cardholderName: e.target.value.replace(/[^A-Za-z ]/g, '').slice(0, 25)
+                      }))}
+                      placeholder="John Doe"
+                      className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
+                        submitAttempted && validationErrors.cardholderName ? 'border-red-400' : 'border-slate-300'
+                      }`}
+                      required
+                      maxLength={32}
+                      disabled={isBlocked || submitting}
+                    />
+                    {submitAttempted && validationErrors.cardholderName && (
+                      <p className="mt-1 text-xs text-red-600">{validationErrors.cardholderName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">Card number</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.cardNumber}
+                      onChange={(e) => setForm((prev) => ({ ...prev, cardNumber: formatCardInput(e.target.value) }))}
+                      placeholder="1234 5678 9012 3456"
+                      className={`w-full border rounded-xl px-3 py-2.5 tracking-[0.12em] focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
+                        submitAttempted && validationErrors.cardNumber ? 'border-red-400' : 'border-slate-300'
+                      }`}
+                      required
+                      disabled={isBlocked || submitting}
+                    />
+                    {submitAttempted && validationErrors.cardNumber && (
+                      <p className="mt-1 text-xs text-red-600">{validationErrors.cardNumber}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700">Expiry (MM/YY)</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.expiry}
+                        onChange={(e) => setForm((prev) => ({ ...prev, expiry: formatExpiryInput(e.target.value) }))}
+                        placeholder="MM/YY"
+                        className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
+                          submitAttempted && validationErrors.expiry ? 'border-red-400' : 'border-slate-300'
+                        }`}
+                        required
+                        maxLength={5}
+                        disabled={isBlocked || submitting}
+                      />
+                      {submitAttempted && validationErrors.expiry && (
+                        <p className="mt-1 text-xs text-red-600">{validationErrors.expiry}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700">CVV</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        value={form.cvv}
+                        onChange={(e) => setForm((prev) => ({ ...prev, cvv: e.target.value.replace(/\D/g, '').slice(0, 3) }))}
+                        placeholder="123"
+                        className={`w-full border rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 ${
+                          submitAttempted && validationErrors.cvv ? 'border-red-400' : 'border-slate-300'
+                        }`}
+                        required
+                        disabled={isBlocked || submitting}
+                      />
+                      {submitAttempted && validationErrors.cvv && (
+                        <p className="mt-1 text-xs text-red-600">{validationErrors.cvv}</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                    <p className="text-sm font-semibold text-slate-800">Owner Bank Details</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-700">
+                      <div>
+                        <span className="font-medium">Account Holder:</span>{' '}
+                        {ownerPaymentDetails?.accountHolderName || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Bank:</span> {ownerPaymentDetails?.bankName || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Branch:</span> {ownerPaymentDetails?.branchName || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Account Number:</span>{' '}
+                        {formatAccountNumber(ownerPaymentDetails?.accountNumber)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">Upload transfer slip image</label>
+                    <input
+                      ref={slipInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleSlipFileChange}
+                      className={`w-full border rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 ${
+                        submitAttempted && (!slipImageFile || slipValidationError) ? 'border-red-400' : 'border-slate-300'
+                      }`}
+                      disabled={isBlocked || submitting || !hasOwnerBankDetails}
+                    />
+                    <p className="mt-1 text-xs text-slate-500">Accepted formats: JPG, JPEG, PNG, WEBP. Max 5MB.</p>
+                    {slipImageFile && (
+                      <div className="mt-1 flex items-center gap-3">
+                        <p className="text-xs text-emerald-700 font-medium">Selected file: {slipImageFile.name}</p>
+                        <button
+                          type="button"
+                          onClick={handleRemoveSlipFile}
+                          className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline disabled:opacity-60"
+                          disabled={submitting}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    {slipValidationError && (
+                      <p className="mt-1 text-xs text-red-600">{slipValidationError}</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button
@@ -483,9 +699,15 @@ const StudentPaymentPage = () => {
                 <button
                   type="submit"
                   className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-60"
-                  disabled={isBlocked || submitting}
+                  disabled={isBlocked || submitting || (paymentMethod === 'bank_transfer' && !hasOwnerBankDetails)}
                 >
-                  {submitting ? 'Processing...' : 'Pay and Confirm Stay'}
+                  {submitting
+                    ? paymentMethod === 'card'
+                      ? 'Processing...'
+                      : 'Submitting...'
+                    : paymentMethod === 'card'
+                      ? 'Pay and Confirm Stay'
+                      : 'Submit Transfer Slip'}
                 </button>
               </div>
             </form>

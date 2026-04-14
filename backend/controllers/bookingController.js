@@ -54,7 +54,7 @@ const getMyBookings = async (req, res) => {
         path: 'boarding',
         populate: {
           path: 'owner',
-          select: 'name email contactNumber',
+          select: 'name email contactNumber paymentDetails',
         },
       });
     res.json(bookings);
