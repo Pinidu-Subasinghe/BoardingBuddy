@@ -7,18 +7,42 @@ const paymentSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: 'LKR' },
-  method: { type: String, enum: ['card'], default: 'card' },
-  status: { type: String, enum: ['succeeded', 'failed'], default: 'succeeded' },
+  method: { type: String, enum: ['card', 'bank_transfer'], default: 'card' },
+  status: { type: String, enum: ['succeeded', 'failed', 'pending'], default: 'succeeded' },
   transactionId: { type: String, required: true, unique: true },
   cardBrand: {
     type: String,
     enum: ['visa', 'mastercard', 'amex', 'discover', 'unknown'],
     default: 'unknown'
   },
-  cardLast4: { type: String, required: true },
-  cardholderName: { type: String, required: true },
-  expiryMonth: { type: Number, required: true, min: 1, max: 12 },
-  expiryYear: { type: Number, required: true },
+  cardLast4: {
+    type: String,
+    required: function () {
+      return this.method === 'card';
+    }
+  },
+  cardholderName: {
+    type: String,
+    required: function () {
+      return this.method === 'card';
+    }
+  },
+  expiryMonth: {
+    type: Number,
+    min: 1,
+    max: 12,
+    required: function () {
+      return this.method === 'card';
+    }
+  },
+  expiryYear: {
+    type: Number,
+    required: function () {
+      return this.method === 'card';
+    }
+  },
+  slipImageUrl: { type: String },
+  slipImagePublicId: { type: String },
   paidAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
