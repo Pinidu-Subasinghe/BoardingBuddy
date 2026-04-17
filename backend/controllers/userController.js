@@ -38,6 +38,7 @@ const getUserProfile = async (req, res) => {
       guardian: user.guardian,
       paymentDetails: user.paymentDetails,
       profileImage: user.profileImage,
+      avatar: user.avatar,
     });
   } else {
     res.status(404).json({ message: "User not found" });
@@ -71,6 +72,10 @@ const updateUserProfile = async (req, res) => {
 
     if (req.file?.path) {
       user.profileImage = req.file.path;
+    }
+
+    if (req.body.avatar !== undefined) {
+      user.avatar = req.body.avatar || user.avatar;
     }
 
     user.name = req.body.name || user.name;
@@ -150,6 +155,7 @@ const updateUserProfile = async (req, res) => {
       guardian: updatedUser.guardian,
       paymentDetails: updatedUser.paymentDetails,
       profileImage: updatedUser.profileImage,
+      avatar: updatedUser.avatar,
       token: generateToken(updatedUser._id),
     });
   } else {
