@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { createBankTransferPayment, createCardPayment, getMyBookings, getMyPayments } from '../api/api';
 import Swal from 'sweetalert2';
 import LoadingAnimation from '../components/LoadingAnimation';
+import PaymentReceipt, { downloadPaymentReceiptPdf } from '../components/PaymentReceipt';
 
 const formatCardInput = (value) => {
   const digitsOnly = String(value || '').replace(/\D/g, '').slice(0, 16);
@@ -224,6 +226,76 @@ const StudentPaymentPage = () => {
     return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2).padEnd(2, 'Y')}`;
   }, [form.expiry]);
 
+  const buildReceiptData = (paymentRecord = {}, methodOverride = paymentMethod) => {
+    return {
+      boardingName: booking?.boarding?.title || 'Boarding',
+      studentName: user?.name || 'Student',
+      amount: Number(paymentRecord?.amount ?? amount ?? 0),
+      method: paymentRecord?.method || methodOverride,
+      paymentId: paymentRecord?.transactionId || paymentRecord?._id || bookingId,
+      bookingId,
+      paidAt: paymentRecord?.paidAt || paymentRecord?.createdAt || new Date().toISOString(),
+      status: paymentRecord?.status || 'succeeded',
+      payeeName: booking?.boarding?.owner?.name || ownerPaymentDetails?.accountHolderName || 'Boarding Owner',
+      accountNumber: ownerPaymentDetails?.accountNumber || '',
+      bankName: ownerPaymentDetails?.bankName || 'N/A',
+      branchName: ownerPaymentDetails?.branchName || 'N/A',
+      currency: paymentRecord?.currency || 'LKR',
+    };
+  };
+
+  const showReceiptDialog = async (receiptData, title, description) => {
+    let receiptRoot = null;
+
+    const result = await Swal.fire({
+      title,
+      html: `
+        <p style="margin: 0 0 12px; color: #475569; font-size: 0.92rem;">
+          ${description}
+        </p>
+        <div id="payment-receipt-preview" style="max-width: 620px; margin: 0 auto;"></div>
+      `,
+      width: 760,
+      showCancelButton: true,
+      confirmButtonText: 'Download Receipt',
+      cancelButtonText: 'Continue',
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#64748b',
+      focusConfirm: true,
+      allowOutsideClick: false,
+      didOpen: () => {
+        const previewContainer = Swal.getHtmlContainer()?.querySelector('#payment-receipt-preview');
+        if (previewContainer) {
+          receiptRoot = createRoot(previewContainer);
+          receiptRoot.render(
+            <div style={{ maxWidth: 620, margin: '0 auto' }}>
+              <PaymentReceipt receipt={receiptData} />
+            </div>
+          );
+        }
+      },
+      willClose: () => {
+        if (receiptRoot) {
+          receiptRoot.unmount();
+          receiptRoot = null;
+        }
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await downloadPaymentReceiptPdf(receiptData);
+    } catch (downloadError) {
+      await Swal.fire({
+        title: 'Receipt download failed',
+        text: downloadError?.message || 'Unable to generate receipt PDF right now.',
+        icon: 'error',
+        confirmButtonColor: '#dc2626',
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -232,6 +304,10 @@ const StudentPaymentPage = () => {
     if (isBlocked) return;
 
     try {
+      let paymentResponse = null;
+      let successTitle = 'Payment completed';
+      let successDescription = 'The owner can now confirm your stay.';
+
       if (paymentMethod === 'card') {
         if (hasValidationErrors) {
           const parsedExpiry = parseExpiry(form.expiry);
@@ -266,7 +342,7 @@ const StudentPaymentPage = () => {
         }
 
         setSubmitting(true);
-        await createCardPayment({
+        paymentResponse = await createCardPayment({
           bookingId,
           amount,
           cardholderName: form.cardholderName.trim(),
@@ -274,14 +350,6 @@ const StudentPaymentPage = () => {
           expiryMonth: parsedExpiry.monthText,
           expiryYear: parsedExpiry.yearFullText,
           cvv: form.cvv.trim()
-        });
-
-        await Swal.fire({
-          title: 'Payment completed',
-          text: 'The owner can now confirm your stay.',
-          icon: 'success',
-          confirmButtonColor: '#16a34a',
-          draggable: true,
         });
       } else {
         if (!hasOwnerBankDetails) {
@@ -305,16 +373,13 @@ const StudentPaymentPage = () => {
         payload.append('amount', String(amount));
         payload.append('slipImage', slipImageFile);
 
-        await createBankTransferPayment(payload);
-
-        await Swal.fire({
-          title: 'Slip uploaded',
-          text: 'Bank transfer payment submitted successfully.',
-          icon: 'success',
-          confirmButtonColor: '#16a34a',
-          draggable: true,
-        });
+        paymentResponse = await createBankTransferPayment(payload);
+        successTitle = 'Slip uploaded';
+        successDescription = 'Bank transfer payment submitted successfully.';
       }
+
+      const receiptData = buildReceiptData(paymentResponse?.data, paymentMethod);
+      await showReceiptDialog(receiptData, successTitle, successDescription);
 
       navigate('/student-dashboard', { state: { activeMenu: 'my-boardings' } });
     } catch (err) {
