@@ -266,6 +266,7 @@ const verifyOtp = async (req, res) => {
       guardian: verifiedUser.guardian,
       paymentDetails: verifiedUser.paymentDetails,
       profileImage: verifiedUser.profileImage,
+      avatar: verifiedUser.avatar,
       token: generateToken(verifiedUser._id),
     });
   } catch (error) {
@@ -297,6 +298,7 @@ const loginUser = async (req, res) => {
         guardian: user.guardian,
         paymentDetails: user.paymentDetails,
         profileImage: user.profileImage,
+        avatar: user.avatar,
         token: generateToken(user._id),
       });
     } else {

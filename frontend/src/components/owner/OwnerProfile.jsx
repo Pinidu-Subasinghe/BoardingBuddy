@@ -5,6 +5,12 @@ import { updateProfile } from '../../api/api';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_REGEX = /^\d{10}$/;
 const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%&*]).{8,}$/;
+const DEFAULT_AVATAR = 'avatar 1.png';
+
+const buildAvatarOptions = (count = 10) =>
+  Array.from({ length: count }, (_, index) => `avatar ${index + 1}.png`);
+
+const getAvatarSrc = (avatarName) => `/avatars/${encodeURIComponent(avatarName || DEFAULT_AVATAR)}`;
 
 // Always get latest user from localStorage after update
 function getCurrentUser() {
@@ -27,6 +33,9 @@ const OwnerProfile = () => {
 
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
   const [profileImageFile, setProfileImageFile] = useState(null);
+  const [avatar, setAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || DEFAULT_AVATAR);
 
   const [editMode, setEditMode] = useState({
     name: false,
@@ -42,6 +51,7 @@ const OwnerProfile = () => {
     contactNumber: useRef(null),
   };
   const profileInputRef = useRef(null);
+  const avatarOptions = buildAvatarOptions();
   const token = localStorage.getItem('token');
 
   const toggleEdit = (key) => {
@@ -82,6 +92,24 @@ const OwnerProfile = () => {
     setProfileImageFile(file);
     setProfileImage(URL.createObjectURL(file));
     setChanged(true);
+  };
+
+  const saveAvatarSelection = async () => {
+    if (!selectedAvatar) return;
+    try {
+      const payload = new FormData();
+      payload.append('avatar', selectedAvatar);
+      const res = await updateProfile(payload);
+      const data = res.data;
+      localStorage.setItem('token', data.token || token);
+      localStorage.setItem('user', JSON.stringify(data));
+      setAvatar(selectedAvatar);
+      setAvatarModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Error updating avatar';
+      alert(msg);
+    }
   };
 
   const validateProfileFields = () => {
@@ -159,18 +187,19 @@ const OwnerProfile = () => {
           <div className="relative">
             <div className="rounded-full bg-gradient-to-br from-black via-gray-900 to-blue-600 p-1">
               <div className="h-32 w-32 rounded-full border border-gray-200 bg-gray-100 overflow-hidden flex items-center justify-center">
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-3xl font-semibold text-gray-500">
-                  {(user?.name || 'U').charAt(0).toUpperCase()}
-                </span>
-              )}
+              <img
+                src={profileImage || getAvatarSrc(avatar)}
+                alt="Profile"
+                className="h-full w-full object-cover"
+              />
               </div>
             </div>
             <button
               type="button"
-              onClick={() => profileInputRef.current?.click()}
+              onClick={() => {
+                setSelectedAvatar(avatar || DEFAULT_AVATAR);
+                setAvatarModalOpen(true);
+              }}
               className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center text-gray-600 hover:text-indigo-600"
               aria-label="Edit profile image"
               title="Edit profile image"
@@ -187,7 +216,70 @@ const OwnerProfile = () => {
               onChange={handleProfileImageChange}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => profileInputRef.current?.click()}
+            className="mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          >
+            Upload profile image
+          </button>
         </div>
+
+        {avatarModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-semibold text-gray-900">Choose an avatar</h4>
+                <button
+                  type="button"
+                  onClick={() => setAvatarModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-4">
+                {avatarOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setSelectedAvatar(option)}
+                    className={`rounded-full p-1 ring-2 transition ${
+                      selectedAvatar === option ? 'ring-indigo-500' : 'ring-transparent'
+                    }`}
+                  >
+                    <img
+                      src={getAvatarSrc(option)}
+                      alt={option}
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAvatarModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveAvatarSelection}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  Save avatar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Profile Info Card */}
         <div className="bg-white shadow-lg shadow-gray-200/60 rounded-2xl overflow-hidden border border-gray-100">
