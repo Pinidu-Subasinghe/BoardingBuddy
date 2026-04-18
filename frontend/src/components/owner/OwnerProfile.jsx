@@ -1,4 +1,4 @@
-import React, { useContext, useState, useRef } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { updateProfile } from '../../api/api';
 
@@ -178,10 +178,82 @@ const OwnerProfile = () => {
     }
   };
 
+  // Profile completion progress state
+  const [progress, setProgress] = useState(0);
+  const [suggestion, setSuggestion] = useState('');
+
+  // Calculate profile completion using weighted scoring
+  function calculateProfileCompletion(u = {}) {
+    const weights = {
+      name: 10,
+      email: 10,
+      phone: 10,
+      university: 10,
+      guardianName: 10,
+      guardianPhone: 10,
+      profileImage: 20,
+      dob: 10,
+      password: 10,
+    };
+
+    let total = 0;
+    if (u.name) total += weights.name;
+    if (u.email) total += weights.email;
+    if (u.contactNumber) total += weights.phone;
+    if (u.university) total += weights.university;
+    if (u.guardian && u.guardian.name) total += weights.guardianName;
+    if (u.guardian && u.guardian.phone) total += weights.guardianPhone;
+    if (u.profileImage) total += weights.profileImage;
+    if (u.dob) total += weights.dob;
+    total += weights.password; // assume password exists
+
+    return Math.min(100, Math.round(total));
+  }
+
+  const getBarColor = (p) => {
+    if (p <= 40) return 'bg-red-500';
+    if (p <= 70) return 'bg-yellow-400';
+    return 'bg-green-500';
+  };
+
+  useEffect(() => {
+    const mergedUser = {
+      ...user,
+      name: fields.name,
+      email: fields.email,
+      contactNumber: fields.contactNumber,
+      profileImage: profileImage || user?.profileImage,
+    };
+
+    const p = calculateProfileCompletion(mergedUser);
+    setProgress(p);
+
+    if (!mergedUser.profileImage) {
+      setSuggestion('Add a profile image to complete your profile');
+    } else if (!mergedUser.contactNumber) {
+      setSuggestion('Add your contact number');
+    } else {
+      setSuggestion('Your profile looks great!');
+    }
+  }, [user, fields, profileImage]);
+
   return (
     <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <h3 className="text-3xl font-bold text-gray-900 mb-6 tracking-tight">My Profile</h3>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-gray-700">Profile Completion: {progress}%</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div
+              className={getBarColor(progress) + ' h-2 rounded-full transition-all duration-500'}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="mt-2 text-sm text-gray-600 italic">{suggestion}</p>
+        </div>
 
         <div className="mb-6 flex flex-col items-center">
           <div className="relative">
