@@ -1,7 +1,9 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import { AuthContext } from '../context/AuthContext';
 import OwnerProfile from '../components/owner/OwnerProfile';
+import OwnerPaymentInfo from '../components/owner/OwnerPaymentInfo';
 import OwnerBoardings from '../components/owner/OwnerBoardings';
 import OwnerPayments from '../components/owner/OwnerPayments';
 import OwnerVisits from '../components/owner/OwnerVisits';
@@ -11,9 +13,27 @@ import OwnerInquiries from '../components/owner/OwnerInquiries';
 import OwnerReminders from '../components/owner/OwnerReminders';
 import DashboardShell from '../components/DashboardShell';
 
+const getCurrentUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user'));
+  } catch {
+    return null;
+  }
+};
+
+const hasPaymentDetails = (paymentDetails) => {
+  return Boolean(
+    paymentDetails?.accountNumber &&
+    paymentDetails?.bankName &&
+    paymentDetails?.branchName &&
+    paymentDetails?.accountHolderName
+  );
+};
+
 const OwnerDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const location = useLocation();
+  const latestUser = getCurrentUser() || user;
   const [activeMenu, setActiveMenu] = useState(() => {
     // Read from navigation state if available
     return location.state?.activeMenu || 'profile';
@@ -25,6 +45,22 @@ const OwnerDashboard = () => {
       setActiveMenu(location.state.activeMenu);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (!latestUser || latestUser.role !== 'owner') return;
+    if (hasPaymentDetails(latestUser.paymentDetails)) return;
+    if (sessionStorage.getItem('owner-payment-info-alert-shown') === '1') return;
+
+    sessionStorage.setItem('owner-payment-info-alert-shown', '1');
+    setActiveMenu('paymentInfo');
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Payment Details Missing',
+      text: 'Your payment details are missing please add them.',
+      confirmButtonColor: '#2563eb',
+    });
+  }, [latestUser]);
 
   // Prevent scrolling when access denied
   React.useEffect(() => {
@@ -60,6 +96,8 @@ const OwnerDashboard = () => {
         return <OwnerReminders />;
       case 'profile':
         return <OwnerProfile />;
+      case 'paymentInfo':
+        return <OwnerPaymentInfo />;
       case 'boardings':
         return <OwnerBoardings />;
       case 'receivedPayments':
@@ -79,6 +117,7 @@ const OwnerDashboard = () => {
 
   const menuItems = [
     { key: 'profile', label: 'My Profile' },
+    { key: 'paymentInfo', label: 'My Payment Info' },
     { key: 'boardings', label: 'My Boardings' },
     { key: 'visits', label: 'My Visits' },
     { key: 'reminders', label: 'Reminders' },

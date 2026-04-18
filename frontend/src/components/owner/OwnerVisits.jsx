@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { getOwnerBookings, markVisitComplete, closeBooking, getOwnerPayments, confirmStay } from '../../api/api';
 import Swal from 'sweetalert2';
@@ -93,9 +93,19 @@ const OwnerVisits = () => {
     return () => clearInterval(intervalId);
   }, [user]);
 
+  const getVisitDisplayStatus = useCallback((visit) => {
+    if (visit?.status === 'visit_completed' && paidBookingIds.has(String(visit?._id))) {
+      return 'payment_received';
+    }
+    return visit?.status || '';
+  }, [paidBookingIds]);
+
   const filteredVisits = useMemo(() => {
     return visits
-      .filter(v => statusFilter === 'all' || v.status === statusFilter)
+      .filter(v => {
+        const displayStatus = getVisitDisplayStatus(v);
+        return statusFilter === 'all' || displayStatus === statusFilter;
+      })
       .filter(v => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
@@ -104,7 +114,7 @@ const OwnerVisits = () => {
                (v.boarding?.title || '').toLowerCase().includes(query);
       })
       .sort((a, b) => new Date(b.requestedAt || b.createdAt) - new Date(a.requestedAt || a.createdAt));
-  }, [visits, statusFilter, searchQuery]);
+  }, [visits, statusFilter, searchQuery, getVisitDisplayStatus]);
 
   const handleMarkVisitDone = async (visitId) => {
     const confirmResult = await Swal.fire({
@@ -283,7 +293,8 @@ const OwnerVisits = () => {
               <option value="all">All Status</option>
               <option value="requested">Requested</option>
               <option value="notified">Notified</option>
-              <option value="visit_completed">Completed</option>
+              <option value="visit_completed">Visit Completed (Payment Pending)</option>
+              <option value="payment_received">Payment Received</option>
               <option value="visited">Visited</option>
               <option value="closed">Closed</option>
             </select>
@@ -331,7 +342,10 @@ const OwnerVisits = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredVisits.map((visit) => (
+            {filteredVisits.map((visit) => {
+              const displayStatus = getVisitDisplayStatus(visit);
+
+              return (
               <tr key={visit._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <input
@@ -358,14 +372,19 @@ const OwnerVisits = () => {
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                    visit.status === 'requested' ? 'bg-blue-50 text-blue-700' :
-                    visit.status === 'notified' ? 'bg-yellow-50 text-yellow-700' :
-                    visit.status === 'visit_completed' ? 'bg-green-50 text-green-700' :
-                    visit.status === 'visited' ? 'bg-green-50 text-green-700' :
-                    visit.status === 'closed' ? 'bg-red-50 text-red-700' :
+                    displayStatus === 'requested' ? 'bg-blue-50 text-blue-700' :
+                    displayStatus === 'notified' ? 'bg-yellow-50 text-yellow-700' :
+                    displayStatus === 'payment_received' ? 'bg-emerald-50 text-emerald-700' :
+                    displayStatus === 'visit_completed' ? 'bg-green-50 text-green-700' :
+                    displayStatus === 'visited' ? 'bg-green-50 text-green-700' :
+                    displayStatus === 'closed' ? 'bg-red-50 text-red-700' :
                     'bg-gray-50 text-gray-600'
                   }`}>
-                    {visit.status === 'requested' ? 'request' : visit.status?.replace(/_/g, ' ')}
+                    {displayStatus === 'requested'
+                      ? 'request'
+                      : displayStatus === 'payment_received'
+                        ? 'Payment Received'
+                        : displayStatus?.replace(/_/g, ' ')}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -459,7 +478,8 @@ const OwnerVisits = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

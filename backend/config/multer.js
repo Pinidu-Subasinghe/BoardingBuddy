@@ -49,9 +49,15 @@ const uploadFeedback = multer({
   fileFilter: imageFileFilter,
   limits: { files: 1 },
 });
+const uploadPaymentSlip = multer({
+  storage: createStorage("payment_slips"),
+  fileFilter: imageFileFilter,
+  limits: { files: 1 },
+});
 
 module.exports = {
   uploadProfile,
   uploadBoarding,
   uploadFeedback,
+  uploadPaymentSlip,
 };
