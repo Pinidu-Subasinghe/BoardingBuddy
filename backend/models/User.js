@@ -48,6 +48,7 @@ const userSchema = new mongoose.Schema({
   },
 
   profileImage: { type: String },
+  avatar: { type: String, default: "avatar 1.png" },
 
   otp: { type: String },
   otpExpiry: { type: Date },
