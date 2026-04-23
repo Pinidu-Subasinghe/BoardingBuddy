@@ -116,15 +116,43 @@ const OwnerDashboard = () => {
   };
 
   const menuItems = [
-    { key: 'profile', label: 'My Profile' },
-    { key: 'paymentInfo', label: 'My Payment Info' },
-    { key: 'boardings', label: 'My Boardings' },
-    { key: 'visits', label: 'My Visits' },
-    { key: 'reminders', label: 'Reminders' },
-    { key: 'ongoing', label: 'Ongoing stays' },
-    { key: 'receivedPayments', label: 'Received Payments' },
-    { key: 'analytics', label: 'Analytics' },
-    { key: 'inquiries', label: 'Inquiries' },
+    {
+      key: 'overview',
+      label: 'Overview',
+      defaultSubKey: 'profile',
+      subItems: [
+        { key: 'profile', label: 'Profile' },
+        { key: 'reminders', label: 'Reminders' },
+      ],
+    },
+    {
+      key: 'manage',
+      label: 'Manage',
+      defaultSubKey: 'boardings',
+      subItems: [
+        { key: 'boardings', label: 'Boardings' },
+        { key: 'visits', label: 'Visits' },
+        { key: 'ongoing', label: 'Ongoing Stays' },
+        { key: 'inquiries', label: 'Inquiries' },
+      ],
+    },
+    {
+      key: 'finance',
+      label: 'Finance',
+      defaultSubKey: 'paymentInfo',
+      subItems: [
+        { key: 'paymentInfo', label: 'Payment Info' },
+        { key: 'receivedPayments', label: 'Received Payments' },
+      ],
+    },
+    {
+      key: 'insights',
+      label: 'Insights',
+      defaultSubKey: 'analytics',
+      subItems: [
+        { key: 'analytics', label: 'Analytics' },
+      ],
+    },
   ];
 
   return (
