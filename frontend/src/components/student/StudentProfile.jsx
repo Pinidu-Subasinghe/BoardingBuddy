@@ -364,7 +364,7 @@ const StudentProfile = () => {
           <div className="px-6 pb-6">
             <div className="flex items-end justify-between -mt-10 mb-4">
               <div className="relative">
-                <div className="h-20 w-20 rounded-2xl border-4 border-white shadow-md bg-gray-100 overflow-hidden">
+                <div className="h-40 w-40 rounded-2xl border-4 border-white shadow-md bg-gray-100 overflow-hidden">
                   <img src={profileImage || getAvatarSrc(avatar)} alt="Profile" className="h-full w-full object-cover" />
                 </div>
                 <button
@@ -373,7 +373,7 @@ const StudentProfile = () => {
                     setSelectedAvatar(avatar || DEFAULT_AVATAR);
                     setAvatarModalOpen(true);
                   }}
-                  className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors"
+                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors"
                   title="Change avatar"
                 >
                   <PencilIcon />
